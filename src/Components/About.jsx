@@ -128,18 +128,19 @@ export default function About() {
           <div>
             <h3 className="text-2xl font-bold mb-6">Why choose us ?</h3>
             <p className="text-gray-600 leading-relaxed mb-4">
-              Maecenas congue metus id turpis iaculis mattis. Sed pellentesque
-              id arcu id scelerisque. Ut ullamcorper rutrum justo, at blandit
-              eros maximus ut. Integer non tincidunt justo, rhoncus Aenean
-              venenatis sed purus ac sollicitudin. Nulla mauris risus, commodo
-              et luctus rutrum, lobortis sed mauris.
+              We believe fashion should be accessible, sustainable, and uniquely
+              yours. Our carefully curated collection features premium quality
+              fabrics, timeless designs, and contemporary styles that empower
+              you to express your individuality. Every piece is selected with
+              attention to detail, ensuring you receive clothing that not only
+              looks great but feels amazing to wear.
             </p>
             <p className="text-gray-600 leading-relaxed">
-              Integer congue, sem elementum varius tristique. Integer non
-              tincidunt justo, rhoncus Aenean venenatis sed purus ac
-              sollicitudin. Nulla mauris risus, commodo et luctus rutrum,
-              lobortis sed mauris. Integer congue, sem elementum varius
-              tristique.
+              With over a decade of experience in fashion retail, we've built
+              lasting relationships with trusted suppliers worldwide. Our
+              commitment to ethical sourcing and fair trade practices means you
+              can shop with confidence, knowing that your purchase supports
+              sustainable fashion and responsible manufacturing.
             </p>
           </div>
         </div>
@@ -149,16 +150,18 @@ export default function About() {
           <div className="order-2 md:order-1">
             <h3 className="text-2xl font-bold mb-6">Trusted online shopping</h3>
             <p className="text-gray-600 leading-relaxed mb-4">
-              Maecenas congue metus id turpis iaculis mattis. Sed pellentesque
-              id arcu id scelerisque. Ut ullamcorper rutrum justo, at blandit
-              eros maximus ut. Integer non tincidunt justo, rhoncus Aenean
-              venenatis sed purus ac sollicitudin. Nulla mauris risus, commodo
-              et luctus rutrum, lobortis sed mauris.
+              Your security and satisfaction are our top priorities. We use
+              industry-leading encryption technology to protect your personal
+              information and payment details. Our secure checkout process is
+              certified by trusted payment providers, ensuring every transaction
+              is safe and protected. Shop with peace of mind knowing your data
+              is always secure with us.
             </p>
             <p className="text-gray-600 leading-relaxed">
-              Integer congue, sem elementum varius tristique. Nulla mauris
-              risus, commodo et luctus rutrum, lobortis sed mauris. Integer
-              congue, sem elementum varius tristique.
+              We offer hassle-free returns within 7 days and provide 24/7
+              customer support to assist you with any questions. Our dedicated
+              team is committed to ensuring your shopping experience is seamless
+              from browsing to delivery.
             </p>
           </div>
           <div className="order-1 md:order-2">
@@ -180,18 +183,21 @@ export default function About() {
             />
           </div>
           <div>
-            <h3 className="text-2xl font-bold mb-6">Trusted online shopping</h3>
+            <h3 className="text-2xl font-bold mb-6">
+              Fast & reliable delivery
+            </h3>
             <p className="text-gray-600 leading-relaxed mb-4">
-              Maecenas congue metus id turpis iaculis mattis. Sed pellentesque
-              id arcu id scelerisque. Ut ullamcorper rutrum justo, at blandit
-              eros maximus ut. Integer non tincidunt justo, rhoncus Aenean
-              venenatis sed purus ac sollicitudin. Nulla mauris risus, commodo
-              et luctus rutrum, lobortis sed mauris.
+              Experience lightning-fast delivery with our efficient logistics
+              network. We partner with leading shipping carriers to ensure your
+              orders arrive on time, every time. Track your package in real-time
+              and receive instant notifications at every step of the delivery
+              process. Free shipping is available on all orders over $140.
             </p>
             <p className="text-gray-600 leading-relaxed">
-              Integer congue, sem elementum varius tristique. Nulla mauris
-              risus, commodo et luctus rutrum, lobortis sed mauris. Integer
-              congue, sem elementum varius tristique.
+              Our packaging is eco-friendly and designed to protect your items
+              during transit. We take pride in delivering your fashion finds in
+              perfect condition, ready to wear the moment they arrive at your
+              doorstep.
             </p>
           </div>
         </div>
@@ -336,7 +342,7 @@ export default function About() {
         </div>
       </section>
 
-     <Footer />
+      <Footer />
     </div>
   );
 }
