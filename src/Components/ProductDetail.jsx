@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../redux/slice/Appslice";
 import { toggleFavourite } from "../redux/slice/FavouritesSlice";
+import Footer from "../Footer/Footer";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -263,16 +264,16 @@ export default function ProductDetail() {
 
       {/* Product Section */}
       <div className="max-w-7xl mx-auto px-4 pb-12">
-        <div className="grid md:grid-cols-2 gap-12">
+        <div className="grid md:grid-cols-2 gap-8 md:gap-12">
           {/* Product Images */}
-          <div className="flex gap-4">
+          <div className="flex gap-2 md:gap-4">
             {/* Thumbnails */}
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2 md:gap-3">
               {product.images.map((image, index) => (
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
-                  className={`w-20 h-24 rounded-lg overflow-hidden border-2 ${
+                  className={`w-16 h-20 md:w-20 md:h-24 rounded-lg overflow-hidden border-2 ${
                     selectedImage === index
                       ? "border-blue-600"
                       : "border-transparent"
@@ -308,8 +309,12 @@ export default function ProductDetail() {
             </div>
 
             {/* Title */}
-            <h1 className="text-2xl font-bold mb-2">{product.name}</h1>
-            <p className="text-gray-600 mb-6">{product.subtitle}</p>
+            <h1 className="text-xl md:text-2xl font-bold mb-2">
+              {product.name}
+            </h1>
+            <p className="text-sm md:text-base text-gray-600 mb-6">
+              {product.subtitle}
+            </p>
 
             {/* Color Selection */}
             <div className="mb-6">
@@ -339,16 +344,16 @@ export default function ProductDetail() {
                 <p className="text-sm font-medium">
                   Size: <span className="font-normal">{selectedSize}</span>
                 </p>
-                <button className="text-sm text-blue-600 hover:underline">
+                <button className="text-xs md:text-sm text-blue-600 hover:underline">
                   Size Guide
                 </button>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {product.sizes.map((size) => (
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`px-4 py-2 text-sm border rounded-md transition-colors ${
+                    className={`px-3 md:px-4 py-2 text-sm border rounded-md transition-colors ${
                       selectedSize === size
                         ? "bg-blue-600 text-white border-blue-600"
                         : "border-gray-300 text-gray-700 hover:border-gray-400"
@@ -365,20 +370,20 @@ export default function ProductDetail() {
               <p className="text-sm font-medium mb-3">
                 Quantity: <span className="font-normal">{quantity}</span>
               </p>
-              <div className="flex gap-4">
-                <div className="flex items-center border border-gray-300 rounded-lg">
+              <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
+                <div className="flex items-center border border-gray-300 rounded-lg w-full sm:w-auto">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-4 py-3 text-gray-600 hover:text-gray-900"
+                    className="px-4 py-3 text-gray-600 hover:text-gray-900 flex-1 sm:flex-initial"
                   >
                     −
                   </button>
-                  <span className="px-4 py-3 border-x border-gray-300">
+                  <span className="px-4 py-3 border-x border-gray-300 flex-1 sm:flex-initial text-center">
                     {quantity}
                   </span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="px-4 py-3 text-gray-600 hover:text-gray-900"
+                    className="px-4 py-3 text-gray-600 hover:text-gray-900 flex-1 sm:flex-initial"
                   >
                     +
                   </button>
@@ -400,7 +405,7 @@ export default function ProductDetail() {
                       })
                     );
                   }}
-                  className="flex-1 bg-blue-600 text-white rounded-lg px-8 py-3 font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 bg-blue-600 text-white rounded-lg px-6 md:px-8 py-3 font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <span>{product.price}</span>
                   <span>·</span>
@@ -412,7 +417,7 @@ export default function ProductDetail() {
                       dispatch(toggleFavourite(foundProduct));
                     }
                   }}
-                  className={`px-4 py-3 rounded-lg border transition-colors flex items-center justify-center ${
+                  className={`px-4 py-3 rounded-lg border transition-colors flex items-center justify-center sm:w-auto ${
                     isFavourite
                       ? "bg-red-50 border-red-300 text-red-500"
                       : "border-gray-300 text-gray-600 hover:border-gray-400"
@@ -456,7 +461,7 @@ export default function ProductDetail() {
             </div>
 
             {/* Features */}
-            <div className="grid grid-cols-4 gap-4 py-6 border-t border-b border-gray-200">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 py-6 border-t border-b border-gray-200">
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-2 bg-gray-100 rounded-full flex items-center justify-center">
                   <svg
@@ -640,8 +645,9 @@ export default function ProductDetail() {
             {/* Reviews List */}
             <div className="md:col-span-3">
               {/* Search & Filters */}
-              <div className="flex flex-wrap gap-4 mb-6">
-                <div className="flex-1 relative">
+              <div className="space-y-3 mb-6">
+                {/* Search Bar */}
+                <div className="relative w-full">
                   <svg
                     className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                     fill="none"
@@ -654,25 +660,28 @@ export default function ProductDetail() {
                   <input
                     type="text"
                     placeholder="Search topics and reviews"
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600"
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600"
                   />
                 </div>
-                <select className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-600">
-                  <option>All Rating</option>
-                  <option>5 Stars</option>
-                  <option>4 Stars</option>
-                  <option>3 Stars</option>
-                </select>
-                <select className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-600">
-                  <option>Images & Videos</option>
-                  <option>With Images</option>
-                  <option>With Videos</option>
-                </select>
-                <select className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-600">
-                  <option>Sort by: Most recent</option>
-                  <option>Highest Rated</option>
-                  <option>Lowest Rated</option>
-                </select>
+                {/* Filter Dropdowns */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <select className="border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-600 w-full">
+                    <option>All Rating</option>
+                    <option>5 Stars</option>
+                    <option>4 Stars</option>
+                    <option>3 Stars</option>
+                  </select>
+                  <select className="border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-600 w-full">
+                    <option>Images & Videos</option>
+                    <option>With Images</option>
+                    <option>With Videos</option>
+                  </select>
+                  <select className="border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-600 w-full">
+                    <option>Sort by: Most recent</option>
+                    <option>Highest Rated</option>
+                    <option>Lowest Rated</option>
+                  </select>
+                </div>
               </div>
 
               {/* Filter Tags */}
@@ -921,191 +930,7 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-12">
-        <div className="max-w-7xl mx-auto py-12 px-4">
-          <div className="grid md:grid-cols-6 gap-8">
-            <div>
-              <h4 className="font-bold text-lg mb-4">Iconic Fashion</h4>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    New Releases
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Best Sellers
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Signature Collection
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Trending Collection
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-bold mb-4">Shoppings</h4>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Women
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Men
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Kids
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Collaborations
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-bold mb-4">Need Help?</h4>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Delivery
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Returns
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Contact Us
-                  </a>
-                </li>
-              </ul>
-              <h4 className="font-bold mb-2 mt-4">Follow Us</h4>
-              <div className="flex gap-2">
-                <a
-                  href="#"
-                  className="w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center text-xs"
-                >
-                  f
-                </a>
-                <a
-                  href="#"
-                  className="w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center text-xs"
-                >
-                  t
-                </a>
-                <a
-                  href="#"
-                  className="w-8 h-8 bg-gray-800 text-white rounded-full flex items-center justify-center text-xs"
-                >
-                  in
-                </a>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-bold mb-4">Information</h4>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    About Us
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Cookie Policy
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-sm text-gray-600 hover:text-gray-900"
-                  >
-                    Privacy Statement
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div className="md:col-span-2">
-              <h4 className="font-bold mb-4">Contact</h4>
-              <p className="text-sm text-gray-600 mb-4">
-                We're here to help you with your order
-              </p>
-              <p className="text-blue-600 font-bold mb-4">
-                Test(0123) 387 - 7845
-              </p>
-              <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-                LIVE CHAT
-              </button>
-              <p className="text-xs text-gray-500 mt-4">
-                Mon-Fri: 9am-6pm PST / Sat-Sun: 9am-5pm PST
-              </p>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-200 mt-8 pt-8 text-center">
-            <p className="text-sm text-gray-600">
-              COPYRIGHT © 2017 ICONIC.COM. ALL RIGHTS RESERVED
-            </p>
-          </div>
-        </div>
-      </footer>
+      <Footer></Footer>
     </div>
   );
 }

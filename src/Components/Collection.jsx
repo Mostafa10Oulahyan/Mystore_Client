@@ -34,6 +34,7 @@ export default function Collection() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState("grid3");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const productsPerPage = 12;
 
   // Accordion states
@@ -145,24 +146,56 @@ export default function Collection() {
 
       <div className="max-w-7xl mx-auto px-4 pb-12">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold">
-              {filteredProducts.length} Products
-            </h1>
-            {hasActiveFilters && (
-              <button
-                onClick={handleClearFilters}
-                className="text-sm text-blue-600 hover:text-blue-800 mt-1"
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold">
+                {filteredProducts.length} Products
+              </h1>
+              {hasActiveFilters && (
+                <button
+                  onClick={handleClearFilters}
+                  className="text-sm text-blue-600 hover:text-blue-800 mt-1"
+                >
+                  Clear all filters
+                </button>
+              )}
+            </div>
+
+            {/* Mobile Filter Button */}
+            <button
+              onClick={() => setIsFilterOpen(true)}
+              className="lg:hidden flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                Clear all filters
-              </button>
-            )}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                />
+              </svg>
+              <span className="font-medium">Filters</span>
+              {hasActiveFilters && (
+                <span className="bg-white text-blue-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                  {filters.categories.length +
+                    filters.productTypes.length +
+                    filters.colors.length +
+                    filters.sizes.length +
+                    filters.ratings.length}
+                </span>
+              )}
+            </button>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
             {/* Search */}
-            <div className="relative">
+            <div className="relative flex-1 md:flex-initial">
               <input
                 type="text"
                 placeholder="Search products..."
@@ -170,7 +203,7 @@ export default function Collection() {
                 onChange={(e) =>
                   handleFilterChange("searchQuery", e.target.value)
                 }
-                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-blue-600 w-48"
+                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-blue-600 w-full md:w-48"
               />
               <svg
                 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -188,7 +221,7 @@ export default function Collection() {
             </div>
 
             {/* View Mode Buttons */}
-            <div className="flex gap-2">
+            <div className="hidden md:flex gap-2">
               <button
                 onClick={() => setViewMode("grid2")}
                 className={`p-2 rounded ${
@@ -257,7 +290,7 @@ export default function Collection() {
             <select
               value={filters.sortBy}
               onChange={handleSortChange}
-              className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-600"
+              className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-600 flex-1 md:flex-initial"
             >
               <option value="featured">Featured</option>
               <option value="newest">Newest</option>
@@ -269,8 +302,8 @@ export default function Collection() {
         </div>
 
         <div className="flex gap-8">
-          {/* Sidebar Filters */}
-          <div className="w-64 flex-shrink-0">
+          {/* Desktop Sidebar Filters */}
+          <div className="hidden lg:block w-64 flex-shrink-0">
             <h2 className="text-lg font-bold mb-4">Filters</h2>
 
             {/* Active Filters Tags */}
@@ -556,6 +589,364 @@ export default function Collection() {
             </div>
           </div>
 
+          {/* Mobile Filter Drawer */}
+          {isFilterOpen && (
+            <div
+              className="lg:hidden fixed inset-0 z-50 bg-black/50"
+              onClick={() => setIsFilterOpen(false)}
+            >
+              <div
+                className="fixed inset-y-0 left-0 w-[85%] max-w-sm bg-white shadow-2xl overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Filter Header */}
+                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Filters</h2>
+                    {hasActiveFilters && (
+                      <button
+                        onClick={() => {
+                          handleClearFilters();
+                          setIsFilterOpen(false);
+                        }}
+                        className="text-sm text-blue-600 hover:text-blue-800 mt-1"
+                      >
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setIsFilterOpen(false)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Filter Content */}
+                <div className="px-6 py-4">
+                  {/* Active Filters Tags */}
+                  {hasActiveFilters && (
+                    <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-200">
+                      {filters.categories.map((cat) => (
+                        <span
+                          key={cat}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs"
+                        >
+                          {cat}
+                          <button
+                            onClick={() =>
+                              handleFilterChange("categories", cat)
+                            }
+                            className="hover:text-blue-900"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                      {filters.productTypes.map((type) => (
+                        <span
+                          key={type}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs"
+                        >
+                          {type}
+                          <button
+                            onClick={() =>
+                              handleFilterChange("productTypes", type)
+                            }
+                            className="hover:text-green-900"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                      {filters.colors.map((color) => (
+                        <span
+                          key={color}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs"
+                        >
+                          {color}
+                          <button
+                            onClick={() => handleFilterChange("colors", color)}
+                            className="hover:text-purple-900"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                      {filters.sizes.map((size) => (
+                        <span
+                          key={size}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs"
+                        >
+                          {size}
+                          <button
+                            onClick={() => handleFilterChange("sizes", size)}
+                            className="hover:text-orange-900"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Price Filter */}
+                  <div className="border-b border-gray-200 pb-4 mb-4">
+                    <button
+                      onClick={() => toggleFilter("price")}
+                      className="flex items-center justify-between w-full text-left font-medium mb-3"
+                    >
+                      <span>Price</span>
+                      <ChevronIcon isOpen={openFilters.price} />
+                    </button>
+                    {openFilters.price && (
+                      <div className="space-y-3">
+                        <input
+                          type="range"
+                          min="0"
+                          max="500"
+                          value={filters.priceRange[1]}
+                          onChange={(e) =>
+                            handleFilterChange("priceRange", [
+                              filters.priceRange[0],
+                              parseInt(e.target.value),
+                            ])
+                          }
+                          className="w-full accent-blue-600"
+                        />
+                        <div className="flex gap-4">
+                          <div className="flex-1">
+                            <label className="text-xs text-gray-500">Min</label>
+                            <input
+                              type="number"
+                              value={filters.priceRange[0]}
+                              onChange={(e) =>
+                                handleFilterChange("priceRange", [
+                                  parseInt(e.target.value) || 0,
+                                  filters.priceRange[1],
+                                ])
+                              }
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-xs text-gray-500">Max</label>
+                            <input
+                              type="number"
+                              value={filters.priceRange[1]}
+                              onChange={(e) =>
+                                handleFilterChange("priceRange", [
+                                  filters.priceRange[0],
+                                  parseInt(e.target.value) || 500,
+                                ])
+                              }
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-600 text-center">
+                          ${filters.priceRange[0]} - ${filters.priceRange[1]}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Ratings Filter */}
+                  <div className="border-b border-gray-200 pb-4 mb-4">
+                    <button
+                      onClick={() => toggleFilter("ratings")}
+                      className="flex items-center justify-between w-full text-left font-medium mb-3"
+                    >
+                      <span>Ratings</span>
+                      <ChevronIcon isOpen={openFilters.ratings} />
+                    </button>
+                    {openFilters.ratings && (
+                      <div className="space-y-2">
+                        {ratings.map((rating) => (
+                          <label
+                            key={rating}
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={filters.ratings.includes(rating)}
+                              onChange={() =>
+                                handleFilterChange("ratings", rating)
+                              }
+                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <div className="flex">
+                              {[...Array(5)].map((_, i) => (
+                                <span
+                                  key={i}
+                                  className={`text-sm ${
+                                    i < rating
+                                      ? "text-yellow-400"
+                                      : "text-gray-300"
+                                  }`}
+                                >
+                                  ★
+                                </span>
+                              ))}
+                            </div>
+                            <span className="text-sm text-gray-500">& Up</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Category Filter */}
+                  <div className="border-b border-gray-200 pb-4 mb-4">
+                    <button
+                      onClick={() => toggleFilter("category")}
+                      className="flex items-center justify-between w-full text-left font-medium mb-3"
+                    >
+                      <span>Category</span>
+                      <ChevronIcon isOpen={openFilters.category} />
+                    </button>
+                    {openFilters.category && (
+                      <div className="space-y-2">
+                        {categories.map((category) => (
+                          <label
+                            key={category}
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={filters.categories.includes(category)}
+                              onChange={() =>
+                                handleFilterChange("categories", category)
+                              }
+                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700">
+                              {category}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Product Type Filter */}
+                  <div className="border-b border-gray-200 pb-4 mb-4">
+                    <button
+                      onClick={() => toggleFilter("productType")}
+                      className="flex items-center justify-between w-full text-left font-medium mb-3"
+                    >
+                      <span>Product Type</span>
+                      <ChevronIcon isOpen={openFilters.productType} />
+                    </button>
+                    {openFilters.productType && (
+                      <div className="space-y-2">
+                        {productTypes.map((type) => (
+                          <label
+                            key={type}
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={filters.productTypes.includes(type)}
+                              onChange={() =>
+                                handleFilterChange("productTypes", type)
+                              }
+                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700">
+                              {type}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Color Filter */}
+                  <div className="border-b border-gray-200 pb-4 mb-4">
+                    <button
+                      onClick={() => toggleFilter("color")}
+                      className="flex items-center justify-between w-full text-left font-medium mb-3"
+                    >
+                      <span>Color</span>
+                      <ChevronIcon isOpen={openFilters.color} />
+                    </button>
+                    {openFilters.color && (
+                      <div className="flex flex-wrap gap-2">
+                        {colors.map((color) => (
+                          <button
+                            key={color.name}
+                            onClick={() =>
+                              handleFilterChange("colors", color.name)
+                            }
+                            className={`w-8 h-8 rounded-full border-2 transition-all ${
+                              filters.colors.includes(color.name)
+                                ? "border-blue-600 ring-2 ring-blue-200"
+                                : "border-gray-300 hover:border-gray-400"
+                            }`}
+                            style={{ backgroundColor: color.value }}
+                            title={color.name}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Size Filter */}
+                  <div className="border-b border-gray-200 pb-4 mb-4">
+                    <button
+                      onClick={() => toggleFilter("size")}
+                      className="flex items-center justify-between w-full text-left font-medium mb-3"
+                    >
+                      <span>Size</span>
+                      <ChevronIcon isOpen={openFilters.size} />
+                    </button>
+                    {openFilters.size && (
+                      <div className="flex flex-wrap gap-2">
+                        {sizes.map((size) => (
+                          <button
+                            key={size}
+                            onClick={() => handleFilterChange("sizes", size)}
+                            className={`px-3 py-1.5 text-sm border rounded-md transition-colors ${
+                              filters.sizes.includes(size)
+                                ? "bg-blue-600 text-white border-blue-600"
+                                : "border-gray-300 text-gray-700 hover:border-gray-400"
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Apply Button */}
+                <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
+                  <button
+                    onClick={() => setIsFilterOpen(false)}
+                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Show {filteredProducts.length} Products
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Products Grid */}
           <div className="flex-1">
             {currentProducts.length === 0 ? (
@@ -589,13 +980,13 @@ export default function Collection() {
             ) : (
               <>
                 <div
-                  className={`grid gap-6 ${
+                  className={`grid gap-4 md:gap-6 ${
                     viewMode === "grid2"
                       ? "grid-cols-2"
                       : viewMode === "grid3"
-                      ? "grid-cols-3"
+                      ? "grid-cols-2 lg:grid-cols-3"
                       : viewMode === "grid4"
-                      ? "grid-cols-4"
+                      ? "grid-cols-2 lg:grid-cols-4"
                       : "grid-cols-1"
                   }`}
                 >
