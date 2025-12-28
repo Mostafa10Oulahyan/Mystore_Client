@@ -1,12 +1,37 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { openLogin, logout } from "../redux/slice/AuthSlice";
 
 const Navbar = () => {
+  const dispatch = useDispatch();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const profileDropdownRef = useRef(null);
   const totalItems = useSelector((state) => state.StoreApp.totalItems);
   const favouritesCount = useSelector((state) => state.Favourites.items.length);
+  const isAuthenticated = useSelector((state) => state.Auth.isAuthenticated);
+  const user = useSelector((state) => state.Auth.user);
   const location = useLocation();
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        profileDropdownRef.current &&
+        !profileDropdownRef.current.contains(event.target)
+      ) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    dispatch(logout());
+    setIsProfileDropdownOpen(false);
+  };
 
   const isActive = (path) => {
     if (path === "/") {
@@ -143,19 +168,69 @@ const Navbar = () => {
               </button>
             </Link>
             {/* Account - Hidden on mobile, shown on desktop */}
-            <button className="hidden md:block p-2 text-gray-700 hover:text-gray-900 transition-colors">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
+            <div className="relative hidden md:block" ref={profileDropdownRef}>
+              <button
+                onClick={() => {
+                  if (isAuthenticated) {
+                    setIsProfileDropdownOpen(!isProfileDropdownOpen);
+                  } else {
+                    dispatch(openLogin());
+                  }
+                }}
+                className="p-2 text-gray-700 hover:text-gray-900 transition-colors"
               >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-            </button>
+                {isAuthenticated ? (
+                  <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-blue-500 hover:border-blue-600 transition-colors">
+                    {user?.profilePicture ? (
+                      <img
+                        src={user.profilePicture}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                        <span className="text-sm font-bold text-white">
+                          {user?.firstName?.[0]?.toUpperCase() ||
+                            user?.name?.[0]?.toUpperCase() ||
+                            "U"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                )}
+              </button>
+
+              {/* Profile Dropdown */}
+              {isProfileDropdownOpen && isAuthenticated && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                  <Link
+                    to="/account"
+                    onClick={() => setIsProfileDropdownOpen(false)}
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Profile
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-red-500 hover:bg-gray-50 transition-colors"
+                  >
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </nav>
@@ -250,26 +325,82 @@ const Navbar = () => {
 
             {/* Bottom Actions */}
             <div className="border-t border-gray-200 p-6 grid grid-cols-2 gap-4">
-              <Link
-                to="/account"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
+              {isAuthenticated ? (
+                <>
+                  <Link
+                    to="/account"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-500">
+                      {user?.profilePicture ? (
+                        <img
+                          src={user.profilePicture}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                          <span className="text-lg font-bold text-white">
+                            {user?.firstName?.[0]?.toUpperCase() ||
+                              user?.name?.[0]?.toUpperCase() ||
+                              "U"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">
+                      Profile
+                    </span>
+                  </Link>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                      <polyline points="16,17 21,12 16,7"></polyline>
+                      <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span className="text-sm font-medium text-red-500">
+                      Log out
+                    </span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    dispatch(openLogin());
+                  }}
+                  className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                <span className="text-sm font-medium text-gray-700">
-                  Account
-                </span>
-              </Link>
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  <span className="text-sm font-medium text-gray-700">
+                    Account
+                  </span>
+                </button>
+              )}
               <Link
                 to="/favourite"
                 onClick={() => setIsMobileMenuOpen(false)}

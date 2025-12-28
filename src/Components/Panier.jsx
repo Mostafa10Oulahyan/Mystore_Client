@@ -6,11 +6,14 @@ import {
   updateQuantity,
   clearCart,
 } from "../redux/slice/Appslice";
+import { openRegister } from "../redux/slice/AuthSlice";
+import { addOrder } from "../redux/slice/OrdersSlice";
 
 export default function Panier() {
   const dispatch = useDispatch();
   const cart = useSelector((state) => state.StoreApp.cart);
   const totalItems = useSelector((state) => state.StoreApp.totalItems);
+  const isAuthenticated = useSelector((state) => state.Auth.isAuthenticated);
 
   // Checkout drawer state
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -41,11 +44,46 @@ export default function Panier() {
   const handleCheckout = (e) => {
     e.preventDefault();
     // Generate order number
-    const newOrderNumber = `ORD-${Date.now()}`;
+    const newOrderNumber = `ORD- ${Date.now()} `;
     setOrderNumber(newOrderNumber);
 
     // Save ordered product IDs
     setOrderedProducts(cart.map((item) => ({ id: item.id, name: item.name })));
+
+    // Create order object and save to Redux
+    const newOrder = {
+      orderNumber: newOrderNumber,
+      date: new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }),
+      items: cart.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price:
+          typeof item.price === "string"
+            ? item.price.replace("$", "")
+            : item.price,
+        quantity: item.quantity,
+        image: item.image,
+        selectedColor: item.selectedColor,
+        selectedSize: item.selectedSize,
+      })),
+      total: calculateSubtotal(),
+      status: "confirmed",
+      shippingInfo: {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        address: formData.address,
+        city: formData.city,
+        email: formData.email,
+        phoneNumber: formData.phoneNumber,
+      },
+      shippingMethod: formData.shippingMethod,
+      paymentMethod: formData.paymentMethod,
+    };
+    dispatch(addOrder(newOrder));
 
     // Show toast
     setShowToast(true);
@@ -234,29 +272,31 @@ export default function Panier() {
               </div>
             </div>
 
-            {/* Option 1: Create Account */}
-            <button
-              onClick={() => {
-                // For now, just show alert - can be connected to auth system later
-                alert("Account creation feature coming soon!");
-              }}
-              className="w-full bg-[#0067FF] text-white py-3 rounded-full font-bold hover:bg-[#0052CC] transition-colors mb-3 flex items-center justify-center gap-2"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            {/* Option 1: Create Account - Only show for guests */}
+            {!isAuthenticated && (
+              <button
+                onClick={() => {
+                  handleCloseConfirmation();
+                  dispatch(openRegister());
+                }}
+                className="w-full bg-[#0067FF] text-white py-3 rounded-full font-bold hover:bg-[#0052CC] transition-colors mb-3 flex items-center justify-center gap-2"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
-              </svg>
-              Create an account to track your orders
-            </button>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+                Create an account to track your orders
+              </button>
+            )}
 
             {/* Option 2: Continue Shopping */}
             <Link
