@@ -930,7 +930,7 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      <Footer></Footer>
+      <Footer/>
     </div>
   );
 }
