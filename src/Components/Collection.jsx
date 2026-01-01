@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Footer from "../Footer/Footer";
 import {
   setFilter,
@@ -8,6 +10,9 @@ import {
   applySort,
 } from "../redux/slice/ProductsSlice";
 import { toggleFavourite } from "../redux/slice/FavouritesSlice";
+import { EASE, DURATION } from "../animations/config";
+
+gsap.registerPlugin(ScrollTrigger);
 
 // ChevronIcon component defined outside the main component
 const ChevronIcon = ({ isOpen }) => (
@@ -36,6 +41,11 @@ export default function Collection() {
   const [viewMode, setViewMode] = useState("grid3");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const productsPerPage = 12;
+
+  // Animation refs
+  const productsGridRef = useRef(null);
+  const headerRef = useRef(null);
+  const filterPanelRef = useRef(null);
 
   // Accordion states
   const [openFilters, setOpenFilters] = useState({
@@ -114,8 +124,87 @@ export default function Collection() {
     filters.priceRange[0] > 0 ||
     filters.priceRange[1] < 500;
 
+  // Premium GSAP Animations
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      // Header entrance animation
+      if (headerRef.current) {
+        gsap.from(headerRef.current, {
+          opacity: 0,
+          y: 30,
+          duration: DURATION.normal,
+          ease: EASE.smooth,
+        });
+      }
+
+      // Products grid stagger animation
+      if (productsGridRef.current) {
+        const products =
+          productsGridRef.current.querySelectorAll(".product-card");
+
+        gsap.from(products, {
+          scrollTrigger: {
+            trigger: productsGridRef.current,
+            start: "top 85%",
+            toggleActions: "play none none reverse",
+          },
+          opacity: 0,
+          y: 40,
+          scale: 0.95,
+          stagger: {
+            each: 0.08,
+            grid: "auto",
+            from: "start",
+          },
+          duration: DURATION.normal,
+          ease: EASE.smooth,
+        });
+      }
+
+      // Filter panel animation
+      if (filterPanelRef.current) {
+        gsap.from(filterPanelRef.current, {
+          opacity: 0,
+          x: -30,
+          duration: DURATION.normal,
+          ease: EASE.smooth,
+          delay: 0.2,
+        });
+      }
+    });
+
+    return () => ctx.revert();
+  }, [currentPage]);
+
+  // Mobile filter panel animation
+  useLayoutEffect(() => {
+    if (isFilterOpen) {
+      gsap.to(".mobile-filter-overlay", {
+        opacity: 1,
+        duration: DURATION.fast,
+        ease: EASE.smooth,
+      });
+      gsap.to(".mobile-filter-panel", {
+        x: 0,
+        duration: DURATION.normal,
+        ease: EASE.smooth,
+      });
+    } else {
+      gsap.to(".mobile-filter-panel", {
+        x: "-100%",
+        duration: DURATION.fast,
+        ease: EASE.smooth,
+      });
+      gsap.to(".mobile-filter-overlay", {
+        opacity: 0,
+        duration: DURATION.fast,
+        ease: EASE.smooth,
+      });
+    }
+  }, [isFilterOpen]);
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 overflow-hidden">
       {/* Top Bar */}
       <div className="bg-blue-600 text-white text-center py-2 text-sm">
         <span>Free Shipping on Orders over $140!</span>
@@ -146,7 +235,7 @@ export default function Collection() {
 
       <div className="max-w-7xl mx-auto px-4 pb-12">
         {/* Header */}
-        <div className="mb-6">
+        <div ref={headerRef} className="mb-6">
           <div className="flex justify-between items-center mb-4">
             <div>
               <h1 className="text-xl md:text-2xl font-bold">
@@ -303,7 +392,10 @@ export default function Collection() {
 
         <div className="flex gap-8">
           {/* Desktop Sidebar Filters */}
-          <div className="hidden lg:block w-64 flex-shrink-0">
+          <div
+            ref={filterPanelRef}
+            className="hidden lg:block w-64 flex-shrink-0"
+          >
             <h2 className="text-lg font-bold mb-4">Filters</h2>
 
             {/* Active Filters Tags */}
@@ -948,7 +1040,7 @@ export default function Collection() {
           )}
 
           {/* Products Grid */}
-          <div className="flex-1">
+          <div ref={productsGridRef} className="flex-1">
             {currentProducts.length === 0 ? (
               <div className="text-center py-16">
                 <svg
@@ -994,7 +1086,7 @@ export default function Collection() {
                     <Link
                       to={`/product/${product.id}`}
                       key={product.id}
-                      className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow group relative block"
+                      className="product-card bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group relative block card-hover"
                     >
                       {/* Category & Type Badge */}
                       <div className="absolute top-4 left-4 z-10 flex flex-col gap-1">

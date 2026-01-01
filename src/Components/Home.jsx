@@ -1,8 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { toggleFavourite } from "../redux/slice/FavouritesSlice";
 import Footer from "../Footer/Footer";
+import {
+  useHeroAnimation,
+  useAutoAnimate,
+  gsap,
+  ScrollTrigger,
+  EASE,
+  DURATION,
+} from "../hooks/useGSAP";
 
 export default function Home() {
   const dispatch = useDispatch();
@@ -12,8 +20,114 @@ export default function Home() {
   );
   const favourites = useSelector((state) => state.Favourites.items);
 
-  // Get featured products (first 12)
-  const products = allProducts.slice(0, 12);
+  // Animation refs
+  const heroRefs = useHeroAnimation();
+  const pageRef = useAutoAnimate();
+  const productsGridRef = useRef(null);
+  const categoriesRef = useRef(null);
+
+  // Products grid animation - runs on mount (grid remounts on filter change due to key prop)
+  useLayoutEffect(() => {
+    if (!productsGridRef.current) return;
+
+    const cards = productsGridRef.current.querySelectorAll(".product-card");
+
+    // If no cards, nothing to animate
+    if (cards.length === 0) return;
+
+    // Ensure all cards are visible IMMEDIATELY - never block content
+    gsap.set(cards, { opacity: 1, y: 0, scale: 1 });
+
+    const ctx = gsap.context(() => {
+      // Quick, elegant entrance animation
+      gsap.fromTo(
+        cards,
+        {
+          opacity: 0.6,
+          y: 20,
+          scale: 0.98,
+        },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.3, // Fast - content already visible via gsap.set
+          stagger: {
+            each: 0.04,
+            from: "start",
+          },
+          ease: "power2.out",
+          overwrite: true,
+        }
+      );
+    }, productsGridRef);
+
+    return () => ctx.revert();
+  }, [activeFilter]); // Runs when filter changes (grid remounts via key prop)
+
+  // Refresh ScrollTrigger when filter changes (page layout changes)
+  useLayoutEffect(() => {
+    // Small delay to let React finish rendering
+    const timer = setTimeout(() => {
+      ScrollTrigger.refresh();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [activeFilter]);
+
+  // Categories parallax animation
+  useLayoutEffect(() => {
+    if (!categoriesRef.current) return;
+
+    const ctx = gsap.context(() => {
+      const items = categoriesRef.current.querySelectorAll(".category-item");
+
+      // Ensure items are visible immediately
+      gsap.set(items, { opacity: 1, y: 0, scale: 1 });
+
+      gsap.fromTo(
+        items,
+        {
+          opacity: 0.5,
+          y: 20,
+          scale: 0.95,
+        },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: DURATION.normal,
+          stagger: 0.1,
+          ease: EASE.smooth,
+          scrollTrigger: {
+            trigger: categoriesRef.current,
+            start: "top 90%",
+            toggleActions: "play none none none", // Never reverse
+            once: true,
+          },
+        }
+      );
+    }, categoriesRef);
+
+    return () => ctx.revert();
+  }, []);
+
+  // Get a diverse selection of products (3 from each category for homepage)
+  const getHomepageProducts = () => {
+    const categories = ["Men", "Women", "Kids", "Accessories"];
+    const productsPerCategory = 3;
+    let result = [];
+
+    categories.forEach((cat) => {
+      const categoryProducts = allProducts
+        .filter((p) => p.category === cat)
+        .slice(0, productsPerCategory);
+      result = [...result, ...categoryProducts];
+    });
+
+    return result;
+  };
+
+  const products = getHomepageProducts();
 
   // Filter products based on category
   const filteredProducts =
@@ -89,24 +203,43 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 to-purple-50 py-8 md:py-16 px-4">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-8 items-center">
+    <div ref={pageRef} className="min-h-screen bg-gray-50 overflow-hidden">
+      {/* Hero Section - Cinematic WOW Effect */}
+      <section
+        ref={heroRefs.containerRef}
+        className="bg-gradient-to-br from-blue-50 via-purple-50 to-blue-50 py-8 md:py-16 px-4 relative overflow-hidden"
+        style={{ visibility: "hidden" }}
+      >
+        {/* Animated background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-100/50 via-purple-100/30 to-pink-100/50 animate-gradient" />
+
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-8 items-center relative z-10">
           <div className="text-center md:text-left">
-            <p className="text-xs md:text-sm text-gray-600 mb-2">
+            <p
+              ref={heroRefs.subtitleRef}
+              className="text-xs md:text-sm text-gray-600 mb-2 tracking-wider uppercase"
+            >
               New Shopkees Are Here
             </p>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
-              Fashion That Has <br />
-              <span className="text-blue-600 italic">Sense</span>
+            <h1
+              ref={heroRefs.titleRef}
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 overflow-hidden"
+            >
+              <span className="inline-block">Fashion That Has</span> <br />
+              <span className="text-blue-600 italic inline-block">Sense</span>
             </h1>
-            <p className="text-sm md:text-base text-gray-600 mb-6">
+            <p
+              ref={heroRefs.descriptionRef}
+              className="text-sm md:text-base text-gray-600 mb-6 max-w-md"
+            >
               Discover the latest trends in fashion with our carefully curated
               collection. Quality meets style in every piece.
             </p>
             <Link to="/collection">
-              <button className="bg-blue-600 text-white px-6 md:px-8 py-2.5 md:py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm md:text-base">
+              <button
+                ref={heroRefs.ctaRef}
+                className="magnetic-btn bg-blue-600 text-white px-6 md:px-8 py-2.5 md:py-3 rounded-lg hover:bg-blue-700 transition-all font-medium text-sm md:text-base shadow-lg hover:shadow-xl hover:shadow-blue-600/25"
+              >
                 Shop Now
               </button>
             </Link>
@@ -141,24 +274,28 @@ export default function Home() {
             </div>
 
             <img
+              ref={heroRefs.imageRef}
               src="/a.png"
               alt="Fashion Model"
-              className="w-full h-auto rounded-lg relative z-10"
+              className="w-full h-auto rounded-lg relative z-10 will-change-transform"
             />
 
-            {/* Discount Badges */}
-            <div className="absolute right-0 md:right-[-80px] top-1/2 -translate-y-1/2 space-y-2 md:space-y-3 z-20">
-              <div className="bg-white/90 backdrop-blur-sm px-3 md:px-6 py-2 md:py-3 rounded-l-full shadow-lg transform hover:translate-x-[-8px] transition-transform">
+            {/* Discount Badges - Floating Animation */}
+            <div
+              ref={heroRefs.badgesRef}
+              className="absolute right-0 md:right-[-80px] top-1/2 -translate-y-1/2 space-y-2 md:space-y-3 z-20"
+            >
+              <div className="badge-float bg-white/90 backdrop-blur-sm px-3 md:px-6 py-2 md:py-3 rounded-l-full shadow-lg cursor-pointer">
                 <p className="text-xs md:text-sm font-semibold whitespace-nowrap">
                   Get 10% OFF
                 </p>
               </div>
-              <div className="bg-white/90 backdrop-blur-sm px-3 md:px-6 py-2 md:py-3 rounded-l-full shadow-lg transform hover:translate-x-[-8px] transition-transform">
+              <div className="badge-float bg-white/90 backdrop-blur-sm px-3 md:px-6 py-2 md:py-3 rounded-l-full shadow-lg cursor-pointer">
                 <p className="text-xs md:text-sm font-semibold whitespace-nowrap">
                   Get 20% OFF
                 </p>
               </div>
-              <div className="bg-white/90 backdrop-blur-sm px-3 md:px-6 py-2 md:py-3 rounded-l-full shadow-lg transform hover:translate-x-[-8px] transition-transform">
+              <div className="badge-float bg-white/90 backdrop-blur-sm px-3 md:px-6 py-2 md:py-3 rounded-l-full shadow-lg cursor-pointer">
                 <p className="text-xs md:text-sm font-semibold whitespace-nowrap">
                   Get 30% OFF
                 </p>
@@ -167,7 +304,7 @@ export default function Home() {
 
             {/* Shopping Cart Icon */}
             <Link to="/collection">
-              <div className="absolute bottom-2 right-2 md:bottom-4 md:right-8 bg-blue-600 p-3 md:p-4 rounded-full shadow-xl cursor-pointer hover:bg-blue-700 transition-colors z-20">
+              <div className="absolute bottom-2 right-2 md:bottom-4 md:right-8 bg-blue-600 p-3 md:p-4 rounded-full shadow-xl cursor-pointer hover:bg-blue-700 transition-all z-20 hover:scale-110">
                 <svg
                   width="20"
                   height="20"
@@ -187,19 +324,22 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Categories */}
+      {/* Categories - Scroll Animated */}
       <section className="max-w-7xl mx-auto py-8 md:py-12 px-4">
-        <div className="flex justify-start md:justify-center gap-6 md:gap-8 overflow-x-auto pb-4 scrollbar-hide">
+        <div
+          ref={categoriesRef}
+          className="flex justify-start md:justify-center gap-6 md:gap-8 overflow-x-auto pb-4 scrollbar-hide"
+        >
           {categories.map((category, index) => (
             <div
               key={index}
-              className="flex flex-col items-center min-w-[70px] md:min-w-[80px] cursor-pointer group"
+              className="category-item flex flex-col items-center min-w-[70px] md:min-w-[80px] cursor-pointer group"
             >
-              <div className="w-14 h-14 md:w-16 md:h-16 bg-white rounded-full shadow-md flex items-center justify-center overflow-hidden mb-2 group-hover:shadow-lg transition-shadow">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-white rounded-full shadow-md flex items-center justify-center overflow-hidden mb-2 group-hover:shadow-lg transition-all group-hover:scale-110 duration-300">
                 <img
                   src={category.image}
                   alt={category.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
               </div>
               <p className="text-xs md:text-sm text-gray-700 font-medium">
@@ -210,9 +350,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Products Section */}
+      {/* Products Section - Scroll Triggered Stagger */}
       <section className="max-w-7xl mx-auto py-8 md:py-12 px-4">
-        <div className="text-center mb-6 md:mb-8">
+        <div className="text-center mb-6 md:mb-8" data-animate="fade-up">
           <h2 className="text-2xl md:text-3xl font-bold mb-2">
             Check out products of the day
           </h2>
@@ -223,155 +363,152 @@ export default function Home() {
         </div>
 
         {/* Filter Buttons */}
-        <div className="flex justify-center gap-2 md:gap-4 mb-6 md:mb-8 flex-wrap px-2">
-          <button
-            onClick={() => setActiveFilter("all")}
-            className={`px-4 md:px-6 py-1.5 md:py-2 rounded-full font-medium transition-colors text-sm md:text-base ${
-              activeFilter === "all"
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            All Products
-          </button>
-          <button
-            onClick={() => setActiveFilter("men")}
-            className={`px-4 md:px-6 py-1.5 md:py-2 rounded-full font-medium transition-colors text-sm md:text-base ${
-              activeFilter === "men"
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            Men
-          </button>
-          <button
-            onClick={() => setActiveFilter("women")}
-            className={`px-4 md:px-6 py-1.5 md:py-2 rounded-full font-medium transition-colors text-sm md:text-base ${
-              activeFilter === "women"
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            Women
-          </button>
-          <button
-            onClick={() => setActiveFilter("kids")}
-            className={`px-4 md:px-6 py-1.5 md:py-2 rounded-full font-medium transition-colors text-sm md:text-base ${
-              activeFilter === "kids"
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            Kids
-          </button>
-          <button
-            onClick={() => setActiveFilter("accessories")}
-            className={`px-4 md:px-6 py-1.5 md:py-2 rounded-full font-medium transition-colors text-sm md:text-base ${
-              activeFilter === "accessories"
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            Accessories
-          </button>
-        </div>
-
-        {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
-          {filteredProducts.map((product) => (
-            <Link
-              to={`/product/${product.id}`}
-              key={product.id}
-              className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow group relative block"
+        <div
+          className="flex justify-center gap-2 md:gap-4 mb-6 md:mb-8 flex-wrap px-2"
+          data-animate="fade-up"
+          data-delay="0.1"
+        >
+          {["all", "men", "women", "kids", "accessories"].map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setActiveFilter(filter)}
+              className={`filter-btn px-4 md:px-6 py-1.5 md:py-2 rounded-full font-medium transition-all text-sm md:text-base ${
+                activeFilter === filter
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/25"
+                  : "bg-white text-gray-700 hover:bg-gray-100 hover:shadow-md"
+              }`}
             >
-              {/* Category Badge */}
-              <div className="absolute top-4 left-4 z-10 flex flex-col gap-1">
-                <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                  {product.category}
-                </span>
-                <span className="bg-gray-800 text-white text-xs px-2 py-1 rounded">
-                  {product.productType}
-                </span>
-              </div>
-
-              {/* Wishlist Icon */}
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  dispatch(toggleFavourite(product));
-                }}
-                className={`absolute top-4 right-4 z-10 rounded-full p-2 shadow-md transition-all ${
-                  favourites.some((fav) => fav.id === product.id)
-                    ? "bg-red-500 text-white hover:bg-red-600"
-                    : "bg-white text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill={
-                    favourites.some((fav) => fav.id === product.id)
-                      ? "currentColor"
-                      : "none"
-                  }
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                </svg>
-              </button>
-
-              <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                />
-                {/* Color indicator */}
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-                  <div
-                    className="w-6 h-6 rounded-full border-2 border-white shadow-md"
-                    style={{
-                      backgroundColor:
-                        colorOptions.find((c) => c.name === product.color)
-                          ?.value || "#ccc",
-                    }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">
-                  {product.name}
-                </h3>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="flex">{renderStars(product.rating)}</div>
-                  <span className="text-sm text-gray-500">
-                    ({product.reviews})
-                  </span>
-                </div>
-                <p className="text-lg font-bold text-gray-900">
-                  ${product.price.toFixed(2)}
-                </p>
-              </div>
-            </Link>
+              {filter === "all"
+                ? "All Products"
+                : filter.charAt(0).toUpperCase() + filter.slice(1)}
+            </button>
           ))}
         </div>
 
+        {/* Products Grid - Animated */}
+        <div
+          ref={productsGridRef}
+          key={activeFilter} // Force React to remount grid on filter change for clean state
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8 min-h-[200px]"
+        >
+          {filteredProducts.length === 0 ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+              <svg
+                className="w-16 h-16 text-gray-300 mb-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                />
+              </svg>
+              <h3 className="text-lg font-medium text-gray-600 mb-2">
+                No products found
+              </h3>
+              <p className="text-gray-400 text-sm">
+                Try selecting a different category
+              </p>
+            </div>
+          ) : (
+            filteredProducts.map((product) => (
+              <Link
+                to={`/product/${product.id}`}
+                key={product.id}
+                className="product-card bg-white rounded-lg overflow-hidden shadow-md hover:shadow-2xl transition-all group relative block transform hover:-translate-y-2 duration-300"
+              >
+                {/* Category Badge */}
+                <div className="absolute top-4 left-4 z-10 flex flex-col gap-1">
+                  <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                    {product.category}
+                  </span>
+                  <span className="bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                    {product.productType}
+                  </span>
+                </div>
+
+                {/* Wishlist Icon */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    dispatch(toggleFavourite(product));
+                  }}
+                  className={`absolute top-4 right-4 z-10 rounded-full p-2 shadow-md transition-all ${
+                    favourites.some((fav) => fav.id === product.id)
+                      ? "bg-red-500 text-white hover:bg-red-600"
+                      : "bg-white text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill={
+                      favourites.some((fav) => fav.id === product.id)
+                        ? "currentColor"
+                        : "none"
+                    }
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                  </svg>
+                </button>
+
+                <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                  />
+                  {/* Color indicator */}
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                    <div
+                      className="w-6 h-6 rounded-full border-2 border-white shadow-md"
+                      style={{
+                        backgroundColor:
+                          colorOptions.find((c) => c.name === product.color)
+                            ?.value || "#ccc",
+                      }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div className="p-4">
+                  <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">
+                    {product.name}
+                  </h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex">{renderStars(product.rating)}</div>
+                    <span className="text-sm text-gray-500">
+                      ({product.reviews})
+                    </span>
+                  </div>
+                  <p className="text-lg font-bold text-gray-900">
+                    ${product.price.toFixed(2)}
+                  </p>
+                </div>
+              </Link>
+            ))
+          )}
+        </div>
+
         {/* View More Button */}
-        <div className="text-center">
+        <div className="text-center" data-animate="fade-up" data-delay="0.2">
           <Link to="/collection">
-            <button className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+            <button className="magnetic-btn bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-all font-medium shadow-lg hover:shadow-xl hover:shadow-blue-600/25 hover:scale-105 duration-300">
               View More →
             </button>
           </Link>
         </div>
       </section>
 
-      {/* Shop By Categories */}
+      {/* Shop By Categories - Parallax Effect */}
       <section className="max-w-7xl mx-auto py-8 md:py-12 px-4">
-        <div className="text-center mb-6 md:mb-8">
+        <div className="text-center mb-6 md:mb-8" data-animate="fade-up">
           <h2 className="text-2xl md:text-3xl font-bold mb-2">
             Shop By Categories
           </h2>
@@ -383,7 +520,11 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {/* For Men */}
-          <div className="bg-gradient-to-br from-blue-100 via-blue-50 to-white rounded-2xl md:rounded-3xl p-6 md:p-8 overflow-hidden relative h-[320px] md:h-[420px] shadow-lg hover:shadow-xl transition-shadow">
+          <div
+            className="category-card bg-gradient-to-br from-blue-100 via-blue-50 to-white rounded-2xl md:rounded-3xl p-6 md:p-8 overflow-hidden relative h-[320px] md:h-[420px] shadow-lg hover:shadow-2xl transition-all duration-500 group"
+            data-animate="fade-up"
+            data-delay="0.1"
+          >
             <div className="relative z-10 pr-4">
               <h3 className="text-xl md:text-2xl font-bold mb-2 md:mb-3 text-gray-800">
                 For Mens
@@ -393,22 +534,26 @@ export default function Home() {
                 designs for the modern man
               </p>
               <Link to="/collection?category=Men">
-                <button className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg hover:bg-blue-700 transition-all text-xs md:text-sm font-medium shadow-md hover:shadow-lg">
+                <button className="magnetic-btn bg-blue-600 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg hover:bg-blue-700 transition-all text-xs md:text-sm font-medium shadow-md hover:shadow-lg hover:scale-105 duration-300">
                   Shop Now
                 </button>
               </Link>
             </div>
-            <div className="absolute bottom-0 right-0 w-[45%] md:w-[48%] h-[65%] md:h-[75%]">
+            <div className="absolute bottom-0 right-0 w-[45%] md:w-[48%] h-[65%] md:h-[75%] overflow-hidden">
               <img
                 src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop"
                 alt="Men's Fashion"
-                className="w-full h-full object-cover object-top rounded-tl-[2rem] md:rounded-tl-[3rem] drop-shadow-2xl"
+                className="w-full h-full object-cover object-top rounded-tl-[2rem] md:rounded-tl-[3rem] drop-shadow-2xl transition-transform duration-700 group-hover:scale-110"
               />
             </div>
           </div>
 
           {/* For Women */}
-          <div className="bg-gradient-to-br from-pink-100 via-purple-50 to-white rounded-2xl md:rounded-3xl p-6 md:p-8 overflow-hidden relative h-[320px] md:h-[420px] shadow-lg hover:shadow-xl transition-shadow">
+          <div
+            className="category-card bg-gradient-to-br from-pink-100 via-purple-50 to-white rounded-2xl md:rounded-3xl p-6 md:p-8 overflow-hidden relative h-[320px] md:h-[420px] shadow-lg hover:shadow-2xl transition-all duration-500 group"
+            data-animate="fade-up"
+            data-delay="0.2"
+          >
             <div className="relative z-10 pr-4">
               <h3 className="text-xl md:text-2xl font-bold mb-2 md:mb-3 text-gray-800">
                 For Womens
@@ -418,22 +563,26 @@ export default function Home() {
                 designed for confident women
               </p>
               <Link to="/collection?category=Women">
-                <button className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg hover:bg-blue-700 transition-all text-xs md:text-sm font-medium shadow-md hover:shadow-lg">
+                <button className="magnetic-btn bg-blue-600 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg hover:bg-blue-700 transition-all text-xs md:text-sm font-medium shadow-md hover:shadow-lg hover:scale-105 duration-300">
                   Shop Now
                 </button>
               </Link>
             </div>
-            <div className="absolute bottom-0 right-0 w-[45%] md:w-[48%] h-[65%] md:h-[75%]">
+            <div className="absolute bottom-0 right-0 w-[45%] md:w-[48%] h-[65%] md:h-[75%] overflow-hidden">
               <img
                 src="https://images.unsplash.com/photo-1581044777550-4cfa60707c03?w=400&h=500&fit=crop"
                 alt="Women's Fashion"
-                className="w-full h-full object-cover object-top rounded-tl-[2rem] md:rounded-tl-[3rem] drop-shadow-2xl"
+                className="w-full h-full object-cover object-top rounded-tl-[2rem] md:rounded-tl-[3rem] drop-shadow-2xl transition-transform duration-700 group-hover:scale-110"
               />
             </div>
           </div>
 
           {/* For Kids */}
-          <div className="bg-gradient-to-br from-amber-100 via-yellow-50 to-white rounded-2xl md:rounded-3xl p-6 md:p-8 overflow-hidden relative h-[320px] md:h-[420px] shadow-lg hover:shadow-xl transition-shadow">
+          <div
+            className="category-card bg-gradient-to-br from-amber-100 via-yellow-50 to-white rounded-2xl md:rounded-3xl p-6 md:p-8 overflow-hidden relative h-[320px] md:h-[420px] shadow-lg hover:shadow-2xl transition-all duration-500 group"
+            data-animate="fade-up"
+            data-delay="0.3"
+          >
             <div className="relative z-10 pr-4">
               <h3 className="text-xl md:text-2xl font-bold mb-2 md:mb-3 text-gray-800">
                 For Kids
@@ -443,25 +592,28 @@ export default function Home() {
                 ones' adventures every day
               </p>
               <Link to="/collection?category=Kids">
-                <button className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg hover:bg-blue-700 transition-all text-xs md:text-sm font-medium shadow-md hover:shadow-lg">
+                <button className="magnetic-btn bg-blue-600 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg hover:bg-blue-700 transition-all text-xs md:text-sm font-medium shadow-md hover:shadow-lg hover:scale-105 duration-300">
                   Shop Now
                 </button>
               </Link>
             </div>
-            <div className="absolute bottom-0 right-0 w-[45%] md:w-[48%] h-[65%] md:h-[75%]">
+            <div className="absolute bottom-0 right-0 w-[45%] md:w-[48%] h-[65%] md:h-[75%] overflow-hidden">
               <img
                 src="https://images.unsplash.com/photo-1503919545889-aef636e10ad4?w=400&h=500&fit=crop"
                 alt="Kids Fashion"
-                className="w-full h-full object-cover object-top rounded-tl-[2rem] md:rounded-tl-[3rem] drop-shadow-2xl"
+                className="w-full h-full object-cover object-top rounded-tl-[2rem] md:rounded-tl-[3rem] drop-shadow-2xl transition-transform duration-700 group-hover:scale-110"
               />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Reviews Section */}
+      {/* Reviews Section - Cinematic */}
       <section className="max-w-7xl mx-auto py-8 md:py-16 px-4">
-        <div className="bg-gradient-to-r from-blue-100 via-blue-50 to-blue-100 rounded-2xl md:rounded-3xl p-6 md:p-12 shadow-lg">
+        <div
+          className="bg-gradient-to-r from-blue-100 via-blue-50 to-blue-100 rounded-2xl md:rounded-3xl p-6 md:p-12 shadow-lg overflow-hidden relative"
+          data-animate="scale-up"
+        >
           <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-center">
             {/* Product Images */}
             <div className="flex gap-3 md:gap-4 md:w-1/2 w-full justify-center">

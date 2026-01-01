@@ -1,8 +1,21 @@
-import React from "react";
+import React, { useRef, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Footer from "../Footer/Footer";
+import { EASE, DURATION } from "../animations/config";
+
+gsap.registerPlugin(ScrollTrigger);
 
 export default function About() {
+  // Animation refs
+  const heroRef = useRef(null);
+  const quoteRef = useRef(null);
+  const imageRef = useRef(null);
+  const sectionsRef = useRef(null);
+  const instagramRef = useRef(null);
+  const featuresRef = useRef(null);
+
   const instagramImages = [
     "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=300&h=300&fit=crop",
     "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&h=300&fit=crop",
@@ -11,8 +24,152 @@ export default function About() {
     "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=300&h=300&fit=crop",
   ];
 
+  // Premium GSAP Animations
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      // Hero Quote Section Animation
+      if (heroRef.current) {
+        const heroTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: heroRef.current,
+            start: "top 80%",
+            end: "bottom 20%",
+            toggleActions: "play none none reverse",
+          },
+        });
+
+        heroTl
+          .from(quoteRef.current, {
+            opacity: 0,
+            x: -60,
+            duration: DURATION.slow,
+            ease: EASE.smooth,
+          })
+          .from(
+            imageRef.current,
+            {
+              opacity: 0,
+              x: 60,
+              scale: 0.9,
+              duration: DURATION.slow,
+              ease: EASE.smooth,
+            },
+            "-=0.4"
+          );
+      }
+
+      // Alternating sections with scroll-based reveal
+      if (sectionsRef.current) {
+        const contentBlocks =
+          sectionsRef.current.querySelectorAll(".content-block");
+
+        contentBlocks.forEach((block, index) => {
+          const isEven = index % 2 === 0;
+          const image = block.querySelector(".block-image");
+          const text = block.querySelector(".block-text");
+
+          const sectionTl = gsap.timeline({
+            scrollTrigger: {
+              trigger: block,
+              start: "top 75%",
+              end: "bottom 25%",
+              toggleActions: "play none none reverse",
+            },
+          });
+
+          sectionTl
+            .from(image, {
+              opacity: 0,
+              x: isEven ? -80 : 80,
+              scale: 0.95,
+              duration: DURATION.slow,
+              ease: EASE.cinematic,
+            })
+            .from(
+              text,
+              {
+                opacity: 0,
+                x: isEven ? 80 : -80,
+                duration: DURATION.slow,
+                ease: EASE.cinematic,
+              },
+              "-=0.5"
+            )
+            .from(
+              text.querySelectorAll("h3, p"),
+              {
+                opacity: 0,
+                y: 30,
+                stagger: 0.1,
+                duration: DURATION.normal,
+                ease: EASE.smooth,
+              },
+              "-=0.3"
+            );
+        });
+      }
+
+      // Instagram section waterfall animation
+      if (instagramRef.current) {
+        const images = instagramRef.current.querySelectorAll(".instagram-item");
+
+        gsap.from(images, {
+          scrollTrigger: {
+            trigger: instagramRef.current,
+            start: "top 80%",
+            toggleActions: "play none none reverse",
+          },
+          opacity: 0,
+          y: 60,
+          scale: 0.9,
+          stagger: {
+            each: 0.1,
+            from: "center",
+          },
+          duration: DURATION.normal,
+          ease: EASE.smooth,
+        });
+      }
+
+      // Features section stagger animation
+      if (featuresRef.current) {
+        const features = featuresRef.current.querySelectorAll(".feature-item");
+
+        gsap.from(features, {
+          scrollTrigger: {
+            trigger: featuresRef.current,
+            start: "top 80%",
+            toggleActions: "play none none reverse",
+          },
+          opacity: 0,
+          y: 50,
+          scale: 0.9,
+          stagger: 0.15,
+          duration: DURATION.normal,
+          ease: EASE.smooth,
+        });
+
+        // Add floating animation to feature icons
+        features.forEach((feature) => {
+          const icon = feature.querySelector(".feature-icon");
+          if (icon) {
+            gsap.to(icon, {
+              y: -8,
+              duration: 2,
+              ease: "sine.inOut",
+              yoyo: true,
+              repeat: -1,
+            });
+          }
+        });
+      }
+    });
+
+    return () => ctx.revert();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white overflow-hidden">
       {/* Top Bar */}
       <div className="bg-blue-600 text-white text-center py-2 text-sm">
         <span>Free Shipping on Orders over $140!</span>
@@ -42,10 +199,10 @@ export default function About() {
       </div>
 
       {/* Hero Quote Section */}
-      <section className="max-w-7xl mx-auto px-4 py-8">
+      <section ref={heroRef} className="max-w-7xl mx-auto px-4 py-8">
         <div className="bg-gradient-to-r from-slate-100 to-blue-50 rounded-2xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
           {/* Quote Content */}
-          <div className="flex-1">
+          <div ref={quoteRef} className="flex-1">
             <div className="text-blue-600 text-6xl mb-4">"</div>
             <p className="text-gray-700 italic text-lg leading-relaxed mb-6">
               We are glad to present you our most perfect Shopify theme, which
@@ -76,12 +233,12 @@ export default function About() {
           </div>
 
           {/* Hero Image */}
-          <div className="flex-1 flex justify-center">
-            <div className="relative">
+          <div ref={imageRef} className="flex-1 flex justify-center">
+            <div className="relative img-zoom-container">
               <img
                 src="https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&h=450&fit=crop"
                 alt="Fashion Model"
-                className="rounded-lg shadow-lg object-cover w-80 h-96"
+                className="rounded-lg shadow-lg object-cover w-80 h-96 transition-transform duration-700"
               />
               {/* Chat bubble */}
               <div className="absolute bottom-4 right-4 bg-blue-600 text-white p-3 rounded-full shadow-lg cursor-pointer hover:bg-blue-700 transition-colors">
@@ -105,7 +262,7 @@ export default function About() {
       </section>
 
       {/* A Few Words About Us Section */}
-      <section className="max-w-7xl mx-auto px-4 py-16">
+      <section ref={sectionsRef} className="max-w-7xl mx-auto px-4 py-16">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             A Few Words About Us
@@ -117,15 +274,15 @@ export default function About() {
         </div>
 
         {/* Why Choose Us - Image Left, Text Right */}
-        <div className="grid md:grid-cols-2 gap-12 items-center mb-20">
-          <div className="relative">
+        <div className="content-block grid md:grid-cols-2 gap-12 items-center mb-20">
+          <div className="block-image relative img-zoom-container overflow-hidden rounded-lg">
             <img
               src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=500&h=600&fit=crop"
               alt="Fashion Model"
-              className="rounded-lg shadow-lg w-full h-auto object-cover"
+              className="shadow-lg w-full h-auto object-cover transition-transform duration-700"
             />
           </div>
-          <div>
+          <div className="block-text">
             <h3 className="text-2xl font-bold mb-6">Why choose us ?</h3>
             <p className="text-gray-600 leading-relaxed mb-4">
               We believe fashion should be accessible, sustainable, and uniquely
@@ -146,8 +303,8 @@ export default function About() {
         </div>
 
         {/* Trusted Online Shopping - Text Left, Image Right */}
-        <div className="grid md:grid-cols-2 gap-12 items-center mb-20">
-          <div className="order-2 md:order-1">
+        <div className="content-block grid md:grid-cols-2 gap-12 items-center mb-20">
+          <div className="block-text order-2 md:order-1">
             <h3 className="text-2xl font-bold mb-6">Trusted online shopping</h3>
             <p className="text-gray-600 leading-relaxed mb-4">
               Your security and satisfaction are our top priorities. We use
@@ -164,25 +321,25 @@ export default function About() {
               from browsing to delivery.
             </p>
           </div>
-          <div className="order-1 md:order-2">
+          <div className="block-image order-1 md:order-2 img-zoom-container overflow-hidden rounded-lg">
             <img
               src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500&h=400&fit=crop"
               alt="Online Shopping Laptop"
-              className="rounded-lg shadow-lg w-full h-auto object-cover"
+              className="shadow-lg w-full h-auto object-cover transition-transform duration-700"
             />
           </div>
         </div>
 
         {/* Another Section - Image Left, Text Right */}
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <div>
+        <div className="content-block grid md:grid-cols-2 gap-12 items-center">
+          <div className="block-image img-zoom-container overflow-hidden rounded-lg">
             <img
               src="https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=500&h=600&fit=crop"
               alt="Fashion Model"
-              className="rounded-lg shadow-lg w-full h-auto object-cover"
+              className="shadow-lg w-full h-auto object-cover transition-transform duration-700"
             />
           </div>
-          <div>
+          <div className="block-text">
             <h3 className="text-2xl font-bold mb-6">
               Fast & reliable delivery
             </h3>
@@ -204,7 +361,7 @@ export default function About() {
       </section>
 
       {/* Instagram Section */}
-      <section className="py-12">
+      <section ref={instagramRef} className="py-12">
         <div className="text-center mb-8">
           <h2 className="text-2xl md:text-3xl font-bold">
             <span className="text-gray-400">
@@ -227,16 +384,16 @@ export default function About() {
           {instagramImages.map((image, index) => (
             <div
               key={index}
-              className="flex-1 aspect-square overflow-hidden group relative cursor-pointer"
+              className="instagram-item flex-1 aspect-square overflow-hidden group relative cursor-pointer"
             >
               <img
                 src={image}
                 alt={`Instagram ${index + 1}`}
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                 <svg
-                  className="w-8 h-8 text-white"
+                  className="w-8 h-8 text-white transform group-hover:scale-110 transition-transform duration-300"
                   fill="currentColor"
                   viewBox="0 0 24 24"
                 >
@@ -249,11 +406,11 @@ export default function About() {
       </section>
 
       {/* Features Section */}
-      <section className="max-w-7xl mx-auto py-16 px-4">
+      <section ref={featuresRef} className="max-w-7xl mx-auto py-16 px-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          <div className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
+          <div className="feature-item text-center">
+            <div className="feature-icon flex justify-center mb-4">
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-110">
                 <svg
                   width="32"
                   height="32"
@@ -275,9 +432,9 @@ export default function About() {
             </p>
           </div>
 
-          <div className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
+          <div className="feature-item text-center">
+            <div className="feature-icon flex justify-center mb-4">
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-110">
                 <svg
                   width="32"
                   height="32"
@@ -296,9 +453,9 @@ export default function About() {
             </p>
           </div>
 
-          <div className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
+          <div className="feature-item text-center">
+            <div className="feature-icon flex justify-center mb-4">
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-110">
                 <svg
                   width="32"
                   height="32"
@@ -319,9 +476,9 @@ export default function About() {
             </p>
           </div>
 
-          <div className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
+          <div className="feature-item text-center">
+            <div className="feature-icon flex justify-center mb-4">
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-110">
                 <svg
                   width="32"
                   height="32"

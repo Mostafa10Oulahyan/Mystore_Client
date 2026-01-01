@@ -1,8 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Footer from "../Footer/Footer";
+import { EASE, DURATION } from "../animations/config";
+
+gsap.registerPlugin(ScrollTrigger);
 
 export default function Contact() {
+  // Animation refs
+  const formRef = useRef(null);
+  const imageRef = useRef(null);
+  const infoCardsRef = useRef(null);
+  const mapRef = useRef(null);
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -12,6 +23,74 @@ export default function Contact() {
     message: "",
     agreePolicy: false,
   });
+
+  // Premium GSAP Animations
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      // Form entrance animation
+      if (formRef.current) {
+        const formElements = formRef.current.querySelectorAll(
+          "input, textarea, button, label, h1, p"
+        );
+
+        gsap.from(formElements, {
+          opacity: 0,
+          y: 30,
+          stagger: 0.05,
+          duration: DURATION.normal,
+          ease: EASE.smooth,
+        });
+      }
+
+      // Image reveal animation
+      if (imageRef.current) {
+        gsap.from(imageRef.current, {
+          opacity: 0,
+          x: 60,
+          scale: 0.95,
+          duration: DURATION.slow,
+          ease: EASE.cinematic,
+          delay: 0.3,
+        });
+      }
+
+      // Info cards stagger animation
+      if (infoCardsRef.current) {
+        const cards = infoCardsRef.current.querySelectorAll(".info-card");
+
+        gsap.from(cards, {
+          scrollTrigger: {
+            trigger: infoCardsRef.current,
+            start: "top 80%",
+            toggleActions: "play none none reverse",
+          },
+          opacity: 0,
+          y: 50,
+          scale: 0.95,
+          stagger: 0.15,
+          duration: DURATION.normal,
+          ease: EASE.smooth,
+        });
+      }
+
+      // Map section animation
+      if (mapRef.current) {
+        gsap.from(mapRef.current, {
+          scrollTrigger: {
+            trigger: mapRef.current,
+            start: "top 80%",
+            toggleActions: "play none none reverse",
+          },
+          opacity: 0,
+          y: 40,
+          duration: DURATION.slow,
+          ease: EASE.smooth,
+        });
+      }
+    });
+
+    return () => ctx.revert();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -56,7 +135,7 @@ export default function Contact() {
       <section className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid md:grid-cols-2 gap-12 items-start">
           {/* Contact Form */}
-          <div>
+          <div ref={formRef}>
             <h1 className="text-3xl font-bold mb-2">Contact us</h1>
             <p className="text-gray-600 mb-8">
               Make your best moments more stylish with our latest designs of
@@ -169,8 +248,8 @@ export default function Contact() {
           </div>
 
           {/* Hero Image */}
-          <div className="relative hidden md:block">
-            <div className="bg-gradient-to-br from-blue-50 to-slate-100 rounded-2xl overflow-hidden h-full min-h-[500px] relative">
+          <div ref={imageRef} className="relative hidden md:block">
+            <div className="bg-gradient-to-br from-blue-50 to-slate-100 rounded-2xl overflow-hidden h-full min-h-[500px] relative img-zoom-container">
               <div className="absolute top-8 left-8 z-10">
                 <p className="text-xs tracking-widest text-gray-600 mb-2">
                   NEW ARRIVALS
@@ -186,7 +265,7 @@ export default function Contact() {
               <img
                 src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&h=600&fit=crop"
                 alt="Happy couple"
-                className="absolute bottom-0 right-0 w-full h-full object-cover object-center"
+                className="absolute bottom-0 right-0 w-full h-full object-cover object-center transition-transform duration-700"
               />
             </div>
           </div>
@@ -194,12 +273,12 @@ export default function Contact() {
       </section>
 
       {/* Contact Info Cards */}
-      <section className="max-w-7xl mx-auto px-4 py-16">
+      <section ref={infoCardsRef} className="max-w-7xl mx-auto px-4 py-16">
         <div className="grid md:grid-cols-3 gap-8 text-center">
           {/* Email */}
-          <div>
+          <div className="info-card card-hover p-6 rounded-xl transition-all duration-300 hover:bg-gray-50">
             <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-110">
                 <svg
                   className="w-6 h-6 text-blue-600"
                   fill="none"
@@ -228,9 +307,9 @@ export default function Contact() {
           </div>
 
           {/* Office */}
-          <div>
+          <div className="info-card card-hover p-6 rounded-xl transition-all duration-300 hover:bg-gray-50">
             <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-110">
                 <svg
                   className="w-6 h-6 text-blue-600"
                   fill="none"
@@ -264,9 +343,9 @@ export default function Contact() {
           </div>
 
           {/* Phone */}
-          <div>
+          <div className="info-card card-hover p-6 rounded-xl transition-all duration-300 hover:bg-gray-50">
             <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-110">
                 <svg
                   className="w-6 h-6 text-blue-600"
                   fill="none"

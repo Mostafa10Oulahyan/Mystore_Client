@@ -1,18 +1,165 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { openLogin, logout } from "../redux/slice/AuthSlice";
+import { gsap } from "gsap";
+import { EASE, DURATION } from "../animations/config";
 
 const Navbar = () => {
   const dispatch = useDispatch();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const profileDropdownRef = useRef(null);
+  const navRef = useRef(null);
+  const mobileMenuRef = useRef(null);
+  const mobileOverlayRef = useRef(null);
   const totalItems = useSelector((state) => state.StoreApp.totalItems);
   const favouritesCount = useSelector((state) => state.Favourites.items.length);
   const isAuthenticated = useSelector((state) => state.Auth.isAuthenticated);
   const user = useSelector((state) => state.Auth.user);
   const location = useLocation();
+
+  // Smart Navbar - Hide on scroll down, show on scroll up
+  useEffect(() => {
+    if (!navRef.current) return;
+
+    let lastScrollY = window.scrollY;
+    let isHidden = false;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      // Show navbar when at top
+      if (currentScrollY < 100) {
+        if (isHidden) {
+          gsap.to(navRef.current, {
+            y: 0,
+            duration: DURATION.normal,
+            ease: EASE.smooth,
+          });
+          isHidden = false;
+        }
+        lastScrollY = currentScrollY;
+        return;
+      }
+
+      // Scrolling down - hide
+      if (currentScrollY > lastScrollY && !isHidden) {
+        gsap.to(navRef.current, {
+          y: -100,
+          duration: DURATION.normal,
+          ease: EASE.smooth,
+        });
+        isHidden = true;
+      }
+
+      // Scrolling up - show
+      if (currentScrollY < lastScrollY && isHidden) {
+        gsap.to(navRef.current, {
+          y: 0,
+          duration: DURATION.normal,
+          ease: EASE.smooth,
+        });
+        isHidden = false;
+      }
+
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Cinematic Navbar entrance animation
+  useLayoutEffect(() => {
+    if (!navRef.current) return;
+
+    const ctx = gsap.context(() => {
+      // Navbar slides down
+      gsap.fromTo(
+        navRef.current,
+        { y: -100, opacity: 0 },
+        { y: 0, opacity: 1, duration: DURATION.medium, ease: EASE.cinematic }
+      );
+
+      // Stagger nav links with premium timing
+      gsap.fromTo(
+        ".nav-link",
+        { opacity: 0, y: -20 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: DURATION.normal,
+          stagger: DURATION.stagger?.fast || 0.05,
+          delay: 0.3,
+          ease: EASE.smooth,
+        }
+      );
+    });
+
+    return () => ctx.revert();
+  }, []);
+
+  // Cinematic Mobile menu animation
+  useEffect(() => {
+    if (!mobileMenuRef.current || !mobileOverlayRef.current) return;
+
+    if (isMobileMenuOpen) {
+      // Overlay fade in with blur
+      gsap.fromTo(
+        mobileOverlayRef.current,
+        { opacity: 0, backdropFilter: "blur(0px)" },
+        {
+          opacity: 1,
+          backdropFilter: "blur(8px)",
+          duration: DURATION.normal,
+          ease: EASE.smooth,
+        }
+      );
+
+      // Menu slides in from left
+      gsap.fromTo(
+        mobileMenuRef.current,
+        { x: "-100%" },
+        { x: "0%", duration: DURATION.medium, ease: EASE.cinematic }
+      );
+
+      // Stagger menu items
+      gsap.fromTo(
+        ".mobile-nav-link",
+        { opacity: 0, x: -30 },
+        {
+          opacity: 1,
+          x: 0,
+          duration: DURATION.normal,
+          stagger: 0.05,
+          delay: 0.15,
+          ease: EASE.smooth,
+        }
+      );
+    }
+  }, [isMobileMenuOpen]);
+
+  // Close menu with animation
+  const closeMobileMenu = () => {
+    if (!mobileMenuRef.current || !mobileOverlayRef.current) {
+      setIsMobileMenuOpen(false);
+      return;
+    }
+
+    gsap.to(mobileMenuRef.current, {
+      x: "-100%",
+      duration: DURATION.normal,
+      ease: EASE.smooth,
+    });
+
+    gsap.to(mobileOverlayRef.current, {
+      opacity: 0,
+      duration: DURATION.normal,
+      ease: EASE.smooth,
+      onComplete: () => setIsMobileMenuOpen(false),
+    });
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -41,13 +188,16 @@ const Navbar = () => {
   };
 
   const linkStyle = (path) =>
-    `font-medium transition-colors ${
+    `nav-link font-medium transition-colors ${
       isActive(path) ? "text-[#0067FF]" : "text-gray-700 hover:text-gray-900"
     }`;
 
   return (
     <>
-      <nav className="w-full fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200 py-4 shadow-sm">
+      <nav
+        ref={navRef}
+        className="w-full fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200 py-4 shadow-sm"
+      >
         <div className="max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between gap-2 md:gap-8">
           {/* Mobile Menu Button (Hamburger) - Only visible on mobile */}
           <button
@@ -235,14 +385,16 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Mobile Menu Overlay - Only visible on mobile screens */}
+      {/* Mobile Menu Overlay - Cinematic Animation */}
       {isMobileMenuOpen && (
         <div
-          className="md:hidden fixed inset-0 z-[60] bg-black/50"
-          onClick={() => setIsMobileMenuOpen(false)}
+          ref={mobileOverlayRef}
+          className="md:hidden fixed inset-0 z-[100] bg-black/50"
+          onClick={closeMobileMenu}
         >
           <div
-            className="fixed inset-y-0 left-0 w-[85%] max-w-sm bg-white shadow-2xl flex flex-col"
+            ref={mobileMenuRef}
+            className="fixed inset-y-0 left-0 w-[80%] max-w-[300px] bg-white shadow-2xl flex flex-col overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Menu Header */}
@@ -251,8 +403,8 @@ const Navbar = () => {
                 <h2 className="text-2xl font-bold text-blue-600">Menu</h2>
               </div>
               <button
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                onClick={closeMobileMenu}
+                className="p-2 text-gray-500 hover:text-gray-700 transition-colors hover:rotate-90 duration-300"
               >
                 <svg
                   width="24"
@@ -295,70 +447,96 @@ const Navbar = () => {
             <div className="flex-1 overflow-y-auto py-4">
               <Link
                 to="/"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block px-6 py-4 text-lg font-medium text-gray-800 hover:bg-gray-50 transition-colors"
+                onClick={closeMobileMenu}
+                className="mobile-nav-link block px-6 py-4 text-lg font-medium text-gray-800 hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 hover:pl-8"
               >
                 Home
               </Link>
               <Link
                 to="/collection"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block px-6 py-4 text-lg font-medium text-gray-800 hover:bg-gray-50 transition-colors"
+                onClick={closeMobileMenu}
+                className="mobile-nav-link block px-6 py-4 text-lg font-medium text-gray-800 hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 hover:pl-8"
               >
                 Collection
               </Link>
               <Link
                 to="/about"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block px-6 py-4 text-lg font-medium text-gray-800 hover:bg-gray-50 transition-colors"
+                onClick={closeMobileMenu}
+                className="mobile-nav-link block px-6 py-4 text-lg font-medium text-gray-800 hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 hover:pl-8"
               >
                 About us
               </Link>
               <Link
                 to="/contact"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block px-6 py-4 text-lg font-medium text-gray-800 hover:bg-gray-50 transition-colors"
+                onClick={closeMobileMenu}
+                className="mobile-nav-link block px-6 py-4 text-lg font-medium text-gray-800 hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 hover:pl-8"
               >
                 Contact us
               </Link>
             </div>
 
             {/* Bottom Actions */}
-            <div className="border-t border-gray-200 p-6 grid grid-cols-2 gap-4">
-              {isAuthenticated ? (
-                <>
-                  <Link
-                    to="/account"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-500">
-                      {user?.profilePicture ? (
-                        <img
-                          src={user.profilePicture}
-                          alt="Profile"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                          <span className="text-lg font-bold text-white">
-                            {user?.firstName?.[0]?.toUpperCase() ||
-                              user?.name?.[0]?.toUpperCase() ||
-                              "U"}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-sm font-medium text-gray-700">
-                      Profile
-                    </span>
-                  </Link>
+            <div className="border-t border-gray-200 p-4 mt-auto">
+              <div className="grid grid-cols-2 gap-3">
+                {isAuthenticated ? (
+                  <>
+                    <Link
+                      to="/account"
+                      onClick={closeMobileMenu}
+                      className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-blue-50 transition-all duration-300"
+                    >
+                      <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-500">
+                        {user?.profilePicture ? (
+                          <img
+                            src={user.profilePicture}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                            <span className="text-lg font-bold text-white">
+                              {user?.firstName?.[0]?.toUpperCase() ||
+                                user?.name?.[0]?.toUpperCase() ||
+                                "U"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-gray-700">
+                        Profile
+                      </span>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        closeMobileMenu();
+                      }}
+                      className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-red-50 transition-all duration-300"
+                    >
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16,17 21,12 16,7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                      </svg>
+                      <span className="text-sm font-medium text-red-500">
+                        Log out
+                      </span>
+                    </button>
+                  </>
+                ) : (
                   <button
                     onClick={() => {
-                      handleLogout();
-                      setIsMobileMenuOpen(false);
+                      closeMobileMenu();
+                      dispatch(openLogin());
                     }}
-                    className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-blue-50 transition-all duration-300"
                   >
                     <svg
                       width="24"
@@ -368,58 +546,34 @@ const Navbar = () => {
                       stroke="currentColor"
                       strokeWidth="2"
                     >
-                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                      <polyline points="16,17 21,12 16,7"></polyline>
-                      <line x1="21" y1="12" x2="9" y2="12"></line>
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
                     </svg>
-                    <span className="text-sm font-medium text-red-500">
-                      Log out
+                    <span className="text-sm font-medium text-gray-700">
+                      Account
                     </span>
                   </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    dispatch(openLogin());
-                  }}
-                  className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-gray-50 transition-colors"
+                )}
+                <Link
+                  to="/favourite"
+                  onClick={closeMobileMenu}
+                  className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-pink-50 transition-all duration-300 border border-gray-100"
                 >
                   <svg
-                    width="24"
-                    height="24"
+                    width="22"
+                    height="22"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
                   >
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                   </svg>
-                  <span className="text-sm font-medium text-gray-700">
-                    Account
+                  <span className="text-xs font-medium text-gray-700">
+                    Wishlist
                   </span>
-                </button>
-              )}
-              <Link
-                to="/favourite"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                </svg>
-                <span className="text-sm font-medium text-gray-700">
-                  Wishlist
-                </span>
-              </Link>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
