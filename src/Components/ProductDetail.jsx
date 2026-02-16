@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useRef, useLayoutEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { addToCart } from "../redux/slice/Appslice";
-import { toggleFavourite } from "../redux/slice/FavouritesSlice";
+
+import { useUser } from "@clerk/clerk-react";
+import { useProducts } from "../context/ProductsContext";
+import { useStore } from "../context/StoreContext";
+import { useFavourites } from "../context/FavouritesContext";
 import Footer from "../Footer/Footer";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -13,11 +15,11 @@ gsap.registerPlugin(ScrollTrigger);
 
 export default function ProductDetail() {
   const { id } = useParams();
-  const dispatch = useDispatch();
-  const { allProducts, colors: colorOptions } = useSelector(
-    (state) => state.Products
-  );
-  const favourites = useSelector((state) => state.Favourites.items);
+  const { user, isSignedIn } = useUser();
+  const userId = user?.id;
+  const { allProducts, colors: colorOptions } = useProducts();
+  const { items: favourites, toggleFavourite } = useFavourites();
+  const { addToCart } = useStore();
 
   // Find the product from Redux store
   const foundProduct = allProducts.find((p) => p.id === parseInt(id));
@@ -240,81 +242,79 @@ export default function ProductDetail() {
   // Build product data from Redux or use fallback
   const product = foundProduct
     ? {
-        id: foundProduct.id,
-        name: foundProduct.name,
-        subtitle: `Premium ${foundProduct.category}'s ${foundProduct.productType} - High quality fashion item`,
-        price: `$${foundProduct.price.toFixed(2)}`,
-        priceNum: foundProduct.price,
-        rating: foundProduct.rating,
-        reviews: foundProduct.reviews,
-        colors: colorOptions.filter((c) =>
-          ["Black", "White", "Blue", "Red", foundProduct.color].includes(c.name)
-        ),
-        sizes: foundProduct.sizes,
-        images: [
-          foundProduct.image,
-          foundProduct.image
-            .replace("w=400", "w=600")
-            .replace("h=500", "h=700"),
-          `https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=600&h=700&fit=crop`,
-          `https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&h=700&fit=crop`,
-        ],
-        estimatedDelivery: "Dec 28 2025 - Jan 02 2026",
-        features: [
-          "Model is 6'1\"",
-          `Wearing size ${
-            foundProduct.sizes?.[Math.floor(foundProduct.sizes.length / 2)] ||
-            "M"
-          }`,
-          "Regular fit",
-          "Machine wash cold with like colors. Tumble dry low",
-          "Premium quality materials",
-          `Category: ${foundProduct.category} - ${foundProduct.productType}`,
-          "Questions? Email us at support@fashionova.com",
-        ],
-        description: `Elevate your wardrobe with this premium ${
-          foundProduct.name
+      id: foundProduct.id,
+      name: foundProduct.name,
+      subtitle: `Premium ${foundProduct.category}'s ${foundProduct.productType} - High quality fashion item`,
+      price: `$${foundProduct.price.toFixed(2)}`,
+      priceNum: foundProduct.price,
+      rating: foundProduct.rating,
+      reviews: foundProduct.reviews,
+      colors: colorOptions.filter((c) =>
+        ["Black", "White", "Blue", "Red", foundProduct.color].includes(c.name)
+      ),
+      sizes: foundProduct.sizes,
+      images: [
+        foundProduct.image,
+        foundProduct.image
+          .replace("w=400", "w=600")
+          .replace("h=500", "h=700"),
+        `https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=600&h=700&fit=crop`,
+        `https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&h=700&fit=crop`,
+      ],
+      estimatedDelivery: "Dec 28 2025 - Jan 02 2026",
+      features: [
+        "Model is 6'1\"",
+        `Wearing size ${foundProduct.sizes?.[Math.floor(foundProduct.sizes.length / 2)] ||
+        "M"
+        }`,
+        "Regular fit",
+        "Machine wash cold with like colors. Tumble dry low",
+        "Premium quality materials",
+        `Category: ${foundProduct.category} - ${foundProduct.productType}`,
+        "Questions? Email us at support@fashionova.com",
+      ],
+      description: `Elevate your wardrobe with this premium ${foundProduct.name
         }. Crafted with attention to detail, this ${foundProduct.productType.toLowerCase()} offers both style and comfort. Perfect for any occasion, it features a modern design that complements your personal style. Made from high-quality materials, it ensures durability and a perfect fit.`,
-        category: foundProduct.category,
-        productType: foundProduct.productType,
-      }
+      category: foundProduct.category,
+      productType: foundProduct.productType,
+    }
     : {
-        id: id || 1,
-        name: "Blue Button Down 100% Linen T-Shirt",
-        subtitle:
-          "Our best-selling world-level Original shorts with an elastic waistband",
-        price: "$42.00",
-        priceNum: 42.0,
-        rating: 4.8,
-        reviews: 3102,
-        colors: [
-          { name: "Blue", value: "#4A90D9" },
-          { name: "Green", value: "#2E8B57" },
-          { name: "Dark Gray", value: "#4A4A4A" },
-          { name: "White", value: "#FFFFFF" },
-        ],
-        sizes: ["XS", "S", "M", "L", "XL", "XXL"],
-        images: [
-          "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=600&h=700&fit=crop",
-          "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&h=700&fit=crop",
-          "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600&h=700&fit=crop",
-          "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=600&h=700&fit=crop",
-        ],
-        estimatedDelivery: "Dec 28 2025 - Jan 02 2026",
-        features: [
-          "Model is 6'1\"",
-          "Wearing size 2",
-          "Regular fit",
-          "Machine wash cold with like colors. Tumble dry low",
-          "Made in Japan",
-          "Model: JMGN0901 / GMStyle 01s G20073",
-          "Questions? Email us at support@fashionova.com",
-        ],
-        description:
-          "A great run starts with the right gear. Made from a 100% aurora stretch cotton, the Carpenter Pant has a flattering high-rise, relaxed straight leg, and slightly cropped fit—plus cargo pockets and hammer loop for an original look.",
-        category: "Men",
-        productType: "Shirts",
-      };
+      id: id || 1,
+      name: "Blue Button Down 100% Linen T-Shirt",
+      subtitle:
+        "Our best-selling world-level Original shorts with an elastic waistband",
+      price: "$42.00",
+      priceNum: 42.0,
+      rating: 4.8,
+      reviews: 3102,
+      colors: [
+        { name: "Blue", value: "#4A90D9" },
+        { name: "Green", value: "#2E8B57" },
+        { name: "Dark Gray", value: "#4A4A4A" },
+        { name: "White", value: "#FFFFFF" },
+      ],
+      sizes: ["XS", "S", "M", "L", "XL", "XXL"],
+      images: [
+        "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=600&h=700&fit=crop",
+        "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&h=700&fit=crop",
+        "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600&h=700&fit=crop",
+        "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=600&h=700&fit=crop",
+      ],
+      estimatedDelivery: "Dec 28 2025 - Jan 02 2026",
+      features: [
+        "Model is 6'1\"",
+        "Wearing size 2",
+        "Regular fit",
+        "Machine wash cold with like colors. Tumble dry low",
+        "Made in Japan",
+        "Model: JMGN0901 / GMStyle 01s G20073",
+        "Questions? Email us at support@fashionova.com",
+      ],
+      description:
+        "A great run starts with the right gear. Made from a 100% aurora stretch cotton, the Carpenter Pant has a flattering high-rise, relaxed straight leg, and slightly cropped fit—plus cargo pockets and hammer loop for an original look.",
+      category: "Men",
+      productType: "Shirts",
+    };
 
   // Get related products from the same category
   const relatedProducts = allProducts
@@ -489,9 +489,8 @@ export default function ProductDetail() {
       stars.push(
         <span
           key={i}
-          className={`${size} ${
-            i <= rating ? "text-yellow-400" : "text-gray-300"
-          }`}
+          className={`${size} ${i <= rating ? "text-yellow-400" : "text-gray-300"
+            }`}
         >
           ★
         </span>
@@ -547,11 +546,10 @@ export default function ProductDetail() {
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
-                  className={`thumbnail-btn w-16 h-20 md:w-20 md:h-24 rounded-lg overflow-hidden border-2 transition-all ${
-                    selectedImage === index
-                      ? "border-blue-600"
-                      : "border-transparent"
-                  }`}
+                  className={`thumbnail-btn w-16 h-20 md:w-20 md:h-24 rounded-lg overflow-hidden border-2 transition-all ${selectedImage === index
+                    ? "border-blue-600"
+                    : "border-transparent"
+                    }`}
                 >
                   <img
                     src={image}
@@ -600,11 +598,10 @@ export default function ProductDetail() {
                   <button
                     key={color.name}
                     onClick={() => setSelectedColor(color.name)}
-                    className={`color-btn w-10 h-10 rounded-full border-2 transition-all ${
-                      selectedColor === color.name
-                        ? "border-blue-600 ring-2 ring-blue-200"
-                        : "border-gray-300"
-                    }`}
+                    className={`color-btn w-10 h-10 rounded-full border-2 transition-all ${selectedColor === color.name
+                      ? "border-blue-600 ring-2 ring-blue-200"
+                      : "border-gray-300"
+                      }`}
                     style={{ backgroundColor: color.value }}
                     title={color.name}
                   />
@@ -627,11 +624,10 @@ export default function ProductDetail() {
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`size-btn px-3 md:px-4 py-2 text-sm border rounded-md transition-colors ${
-                      selectedSize === size
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "border-gray-300 text-gray-700 hover:border-gray-400"
-                    }`}
+                    className={`size-btn px-3 md:px-4 py-2 text-sm border rounded-md transition-colors ${selectedSize === size
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "border-gray-300 text-gray-700 hover:border-gray-400"
+                      }`}
                   >
                     {size}
                   </button>
@@ -664,11 +660,10 @@ export default function ProductDetail() {
                 </div>
                 <button
                   onClick={() => {
-                    dispatch(
-                      addToCart({
-                        cartId: `${
-                          product.id
-                        }-${selectedSize}-${selectedColor}-${Date.now()}`,
+                    addToCart(
+                      {
+                        cartId: `${product.id
+                          }-${selectedSize}-${selectedColor}-${Date.now()}`,
                         id: product.id,
                         name: product.name,
                         price: product.priceNum,
@@ -676,7 +671,8 @@ export default function ProductDetail() {
                         size: selectedSize,
                         color: selectedColor,
                         quantity: quantity,
-                      })
+                      },
+                      userId
                     );
                   }}
                   className="add-to-cart-btn flex-1 bg-blue-600 text-white rounded-lg px-6 md:px-8 py-3 font-medium hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
@@ -688,14 +684,13 @@ export default function ProductDetail() {
                 <button
                   onClick={() => {
                     if (foundProduct) {
-                      dispatch(toggleFavourite(foundProduct));
+                      toggleFavourite(foundProduct, userId);
                     }
                   }}
-                  className={`px-4 py-3 rounded-lg border transition-colors flex items-center justify-center sm:w-auto ${
-                    isFavourite
-                      ? "bg-red-50 border-red-300 text-red-500"
-                      : "border-gray-300 text-gray-600 hover:border-gray-400"
-                  }`}
+                  className={`px-4 py-3 rounded-lg border transition-colors flex items-center justify-center sm:w-auto ${isFavourite
+                    ? "bg-red-50 border-red-300 text-red-500"
+                    : "border-gray-300 text-gray-600 hover:border-gray-400"
+                    }`}
                 >
                   <svg
                     width="24"
@@ -806,31 +801,28 @@ export default function ProductDetail() {
             <div className="flex gap-8">
               <button
                 onClick={() => setActiveTab("description")}
-                className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "description"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`pb-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "description"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 Description
               </button>
               <button
                 onClick={() => setActiveTab("sizing")}
-                className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "sizing"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`pb-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "sizing"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 Sizing Guide
               </button>
               <button
                 onClick={() => setActiveTab("delivery")}
-                className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "delivery"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                className={`pb-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "delivery"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 Delivery and Returns
               </button>
@@ -893,11 +885,10 @@ export default function ProductDetail() {
                       onClick={() =>
                         setSelectedRating(selectedRating === star ? 0 : star)
                       }
-                      className={`w-full flex items-center gap-1 lg:gap-2 p-1 rounded transition-colors ${
-                        selectedRating === star
-                          ? "bg-blue-50"
-                          : "hover:bg-gray-50"
-                      }`}
+                      className={`w-full flex items-center gap-1 lg:gap-2 p-1 rounded transition-colors ${selectedRating === star
+                        ? "bg-blue-50"
+                        : "hover:bg-gray-50"
+                        }`}
                     >
                       <span className="text-xs lg:text-sm w-3">{star}</span>
                       <span className="text-yellow-400 text-xs lg:text-sm">
@@ -905,15 +896,13 @@ export default function ProductDetail() {
                       </span>
                       <div className="flex-1 bg-gray-200 rounded-full h-1.5 lg:h-2 min-w-[60px]">
                         <div
-                          className={`h-1.5 lg:h-2 rounded-full transition-colors ${
-                            selectedRating === star
-                              ? "bg-blue-600"
-                              : "bg-yellow-400"
-                          }`}
+                          className={`h-1.5 lg:h-2 rounded-full transition-colors ${selectedRating === star
+                            ? "bg-blue-600"
+                            : "bg-yellow-400"
+                            }`}
                           style={{
-                            width: `${
-                              (ratingBreakdown[star] / totalReviews) * 100
-                            }%`,
+                            width: `${(ratingBreakdown[star] / totalReviews) * 100
+                              }%`,
                           }}
                         ></div>
                       </div>
@@ -1009,11 +998,10 @@ export default function ProductDetail() {
                   <button
                     key={option}
                     onClick={() => setSelectedTag(option)}
-                    className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-full transition-colors whitespace-nowrap flex-shrink-0 ${
-                      selectedTag === option
-                        ? "bg-blue-600 text-white"
-                        : "bg-white border border-gray-300 text-gray-700 hover:border-gray-400"
-                    }`}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-full transition-colors whitespace-nowrap flex-shrink-0 ${selectedTag === option
+                      ? "bg-blue-600 text-white"
+                      : "bg-white border border-gray-300 text-gray-700 hover:border-gray-400"
+                      }`}
                   >
                     {option}
                   </button>
@@ -1030,17 +1018,17 @@ export default function ProductDetail() {
                 {(selectedRating > 0 ||
                   selectedTag !== "All Reviews" ||
                   searchQuery) && (
-                  <button
-                    onClick={() => {
-                      setSelectedRating(0);
-                      setSelectedTag("All Reviews");
-                      setSearchQuery("");
-                    }}
-                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
-                  >
-                    Clear filters
-                  </button>
-                )}
+                    <button
+                      onClick={() => {
+                        setSelectedRating(0);
+                        setSelectedTag("All Reviews");
+                        setSearchQuery("");
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      Clear filters
+                    </button>
+                  )}
               </div>
 
               {/* Individual Reviews */}
@@ -1228,11 +1216,10 @@ export default function ProductDetail() {
                         e.preventDefault();
                         dispatch(toggleFavourite(relProduct));
                       }}
-                      className={`absolute top-3 right-3 z-10 rounded-full p-2 shadow-md transition-all ${
-                        favourites.some((fav) => fav.id === relProduct.id)
-                          ? "bg-blue-500 text-white"
-                          : "bg-white/90 text-gray-600 sm:opacity-0 sm:group-hover:opacity-100"
-                      }`}
+                      className={`absolute top-3 right-3 z-10 rounded-full p-2 shadow-md transition-all ${favourites.some((fav) => fav.id === relProduct.id)
+                        ? "bg-blue-500 text-white"
+                        : "bg-white/90 text-gray-600 sm:opacity-0 sm:group-hover:opacity-100"
+                        }`}
                     >
                       <svg
                         width="16"

@@ -1,30 +1,24 @@
-import React, { useEffect } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { hideWelcome } from "../redux/slice/AuthSlice";
+import React, { useEffect, useState } from "react";
+import { useUser } from "@clerk/clerk-react";
 
 const WelcomeToast = () => {
-  const dispatch = useDispatch();
-  const showWelcomeMessage = useSelector(
-    (state) => state.Auth.showWelcomeMessage
-  );
-  const welcomeMessageType = useSelector(
-    (state) => state.Auth.welcomeMessageType
-  );
-  const user = useSelector((state) => state.Auth.user);
+  const { user, isSignedIn } = useUser();
+  const [show, setShow] = useState(false);
+  const [wasSignedIn, setWasSignedIn] = useState(false);
 
   useEffect(() => {
-    if (showWelcomeMessage) {
-      const timer = setTimeout(() => {
-        dispatch(hideWelcome());
-      }, 4000);
+    // Show toast when user transitions from signed-out to signed-in
+    if (isSignedIn && !wasSignedIn) {
+      setShow(true);
+      const timer = setTimeout(() => setShow(false), 4000);
       return () => clearTimeout(timer);
     }
-  }, [showWelcomeMessage, dispatch]);
+    setWasSignedIn(!!isSignedIn);
+  }, [isSignedIn]);
 
-  if (!showWelcomeMessage) return null;
+  if (!show || !isSignedIn) return null;
 
-  const isNewUser = welcomeMessageType === "register";
-  const firstName = user?.firstName || user?.name?.split(" ")[0] || "there";
+  const firstName = user?.firstName || "there";
 
   return (
     <div className="fixed top-24 right-4 z-[200] animate-slide-in-toast">
@@ -47,12 +41,10 @@ const WelcomeToast = () => {
             </div>
             <div>
               <h3 className="text-white font-bold text-lg">
-                {isNewUser ? "Welcome aboard! 🎉" : "Welcome back! 👋"}
+                Welcome back! 👋
               </h3>
               <p className="text-blue-100 text-sm">
-                {isNewUser
-                  ? "Account created successfully"
-                  : "You're now logged in"}
+                You're now logged in
               </p>
             </div>
           </div>
@@ -61,39 +53,10 @@ const WelcomeToast = () => {
         {/* Content */}
         <div className="px-6 py-4">
           <p className="text-gray-700">
-            {isNewUser ? (
-              <>
-                Hey{" "}
-                <span className="font-semibold text-blue-600">{firstName}</span>
-                ! Your account is ready. Start exploring our amazing collection!
-              </>
-            ) : (
-              <>
-                Good to see you again,{" "}
-                <span className="font-semibold text-blue-600">{firstName}</span>
-                ! Ready to continue shopping?
-              </>
-            )}
+            Good to see you again,{" "}
+            <span className="font-semibold text-blue-600">{firstName}</span>
+            ! Ready to continue shopping?
           </p>
-
-          {/* Quick Tips for new users */}
-          {isNewUser && (
-            <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M12 16v-4"></path>
-                <path d="M12 8h.01"></path>
-              </svg>
-              <span>Tip: Visit your profile to customize your experience!</span>
-            </div>
-          )}
         </div>
 
         {/* Progress Bar */}
@@ -103,7 +66,7 @@ const WelcomeToast = () => {
 
         {/* Close Button */}
         <button
-          onClick={() => dispatch(hideWelcome())}
+          onClick={() => setShow(false)}
           className="absolute top-3 right-3 p-1 text-white/70 hover:text-white transition-colors"
         >
           <svg

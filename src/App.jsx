@@ -1,5 +1,4 @@
 import { Routes, Route, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
 import { useLayoutEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -14,22 +13,21 @@ import ScrollToTop from "./Components/ScrollToTop";
 import Favourite from "./Components/Favourite";
 import NotFound from "./Components/NotFound";
 import Account from "./Components/Account";
-import Register from "./Components/Register";
-import Login from "./Components/Login";
-import EditProfile from "./Components/EditProfile";
+import TrackOrder from "./Components/TrackOrder";
 import WelcomeToast from "./Components/WelcomeToast";
+import { useUserSync } from "./hooks/useUserSync";
 import { EASE, DURATION } from "./animations/config";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
 
 function App() {
-  const showRegister = useSelector((state) => state.Auth.showRegister);
-  const showLogin = useSelector((state) => state.Auth.showLogin);
-  const showEditProfile = useSelector((state) => state.Auth.showEditProfile);
   const location = useLocation();
   const mainRef = useRef(null);
   const scrollProgressRef = useRef(null);
+
+  // Sync user data with Supabase and hydrate contexts on sign-in
+  useUserSync();
 
   // Scroll progress indicator
   useLayoutEffect(() => {
@@ -100,14 +98,10 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/favourite" element={<Favourite />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/track-order" element={<TrackOrder />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-
-      {/* Auth Modals */}
-      {showRegister && <Register />}
-      {showLogin && <Login />}
-      {showEditProfile && <EditProfile />}
 
       {/* Welcome Toast */}
       <WelcomeToast />

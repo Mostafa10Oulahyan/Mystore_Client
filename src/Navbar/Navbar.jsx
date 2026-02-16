@@ -1,23 +1,24 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import { openLogin, logout } from "../redux/slice/AuthSlice";
+import { useUser, useClerk, SignInButton, UserButton } from "@clerk/clerk-react";
 import { gsap } from "gsap";
 import { EASE, DURATION } from "../animations/config";
+import { useStore } from "../context/StoreContext";
+import { useFavourites } from "../context/FavouritesContext";
 
 const Navbar = () => {
-  const dispatch = useDispatch();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const profileDropdownRef = useRef(null);
   const navRef = useRef(null);
   const mobileMenuRef = useRef(null);
   const mobileOverlayRef = useRef(null);
-  const totalItems = useSelector((state) => state.StoreApp.totalItems);
-  const favouritesCount = useSelector((state) => state.Favourites.items.length);
-  const isAuthenticated = useSelector((state) => state.Auth.isAuthenticated);
-  const user = useSelector((state) => state.Auth.user);
+  const { totalItems } = useStore();
+  const { items: favouriteItems } = useFavourites();
+  const favouritesCount = favouriteItems.length;
+  const { isSignedIn, user, isLoaded } = useUser();
   const location = useLocation();
+
+  // Check if user is admin
+  const isAdmin = user?.publicMetadata?.role === "admin";
 
   // Smart Navbar - Hide on scroll down, show on scroll up
   useEffect(() => {
@@ -161,25 +162,6 @@ const Navbar = () => {
     });
   };
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        profileDropdownRef.current &&
-        !profileDropdownRef.current.contains(event.target)
-      ) {
-        setIsProfileDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleLogout = () => {
-    dispatch(logout());
-    setIsProfileDropdownOpen(false);
-  };
-
   const isActive = (path) => {
     if (path === "/") {
       return location.pathname === "/";
@@ -188,8 +170,7 @@ const Navbar = () => {
   };
 
   const linkStyle = (path) =>
-    `nav-link font-medium transition-colors ${
-      isActive(path) ? "text-[#0067FF]" : "text-gray-700 hover:text-gray-900"
+    `nav-link font-medium transition-colors ${isActive(path) ? "text-[#0067FF]" : "text-gray-700 hover:text-gray-900"
     }`;
 
   return (
@@ -248,7 +229,7 @@ const Navbar = () => {
             to="/"
             className="flex items-center justify-center flex-shrink-0"
           >
-            <img src="a.png" className="h-10 md:h-12 w-auto" alt="Logo" />
+            <img src="newLogo.png" className="h-10 md:h-12 w-auto" alt="Logo" />
           </Link>
 
           {/* Right Nav Links */}
@@ -259,6 +240,26 @@ const Navbar = () => {
             <Link to="/contact" className={linkStyle("/contact")}>
               Contact us
             </Link>
+            {isSignedIn && (
+              <Link to="/track-order" className={linkStyle("/track-order")}>
+                Track Order
+              </Link>
+            )}
+            {/* Admin Dashboard Link — only for admins */}
+            {isAdmin && (
+              <Link to="/admin" className={`nav-link font-medium transition-colors ${isActive("/admin") ? "text-[#0067FF]" : "text-gray-700 hover:text-gray-900"
+                }`}>
+                <span className="flex items-center gap-1">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                  </svg>
+                  Dashboard
+                </span>
+              </Link>
+            )}
           </div>
 
           {/* Icons */}
@@ -266,11 +267,10 @@ const Navbar = () => {
             {/* Favourite - Hidden on mobile, shown on desktop */}
             <Link to="/favourite" className="relative hidden md:block">
               <button
-                className={`p-2 transition-colors ${
-                  isActive("/favourite")
-                    ? "text-[#0067FF]"
-                    : "text-gray-700 hover:text-gray-900"
-                }`}
+                className={`p-2 transition-colors ${isActive("/favourite")
+                  ? "text-[#0067FF]"
+                  : "text-gray-700 hover:text-gray-900"
+                  }`}
               >
                 <svg
                   width="24"
@@ -292,11 +292,10 @@ const Navbar = () => {
             {/* Panier - Always visible */}
             <Link to="/panier" className="relative">
               <button
-                className={`p-2 transition-colors ${
-                  isActive("/panier")
-                    ? "text-[#0067FF]"
-                    : "text-gray-700 hover:text-gray-900"
-                }`}
+                className={`p-2 transition-colors ${isActive("/panier")
+                  ? "text-[#0067FF]"
+                  : "text-gray-700 hover:text-gray-900"
+                  }`}
               >
                 <svg
                   width="24"
@@ -317,68 +316,33 @@ const Navbar = () => {
                 )}
               </button>
             </Link>
-            {/* Account - Hidden on mobile, shown on desktop */}
-            <div className="relative hidden md:block" ref={profileDropdownRef}>
-              <button
-                onClick={() => {
-                  if (isAuthenticated) {
-                    setIsProfileDropdownOpen(!isProfileDropdownOpen);
-                  } else {
-                    dispatch(openLogin());
-                  }
-                }}
-                className="p-2 text-gray-700 hover:text-gray-900 transition-colors"
-              >
-                {isAuthenticated ? (
-                  <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-blue-500 hover:border-blue-600 transition-colors">
-                    {user?.profilePicture ? (
-                      <img
-                        src={user.profilePicture}
-                        alt="Profile"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                        <span className="text-sm font-bold text-white">
-                          {user?.firstName?.[0]?.toUpperCase() ||
-                            user?.name?.[0]?.toUpperCase() ||
-                            "U"}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                  </svg>
-                )}
-              </button>
-
-              {/* Profile Dropdown */}
-              {isProfileDropdownOpen && isAuthenticated && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                  <Link
-                    to="/account"
-                    onClick={() => setIsProfileDropdownOpen(false)}
-                    className="block px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    Profile
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-red-500 hover:bg-gray-50 transition-colors"
-                  >
-                    Log out
+            {/* Account - Clerk UserButton or SignInButton */}
+            <div className="hidden md:block">
+              {isSignedIn ? (
+                <UserButton
+                  afterSignOutUrl="/"
+                  appearance={{
+                    elements: {
+                      avatarBox: "w-9 h-9 border-2 border-blue-500 hover:border-blue-600 transition-colors",
+                    },
+                  }}
+                />
+              ) : (
+                <SignInButton mode="modal">
+                  <button className="p-2 text-gray-700 hover:text-gray-900 transition-colors">
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
                   </button>
-                </div>
+                </SignInButton>
               )}
             </div>
           </div>
@@ -473,12 +437,39 @@ const Navbar = () => {
               >
                 Contact us
               </Link>
+              {isSignedIn && (
+                <Link
+                  to="/track-order"
+                  onClick={closeMobileMenu}
+                  className="mobile-nav-link block px-6 py-4 text-lg font-medium text-gray-800 hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 hover:pl-8"
+                >
+                  Track Order
+                </Link>
+              )}
+              {/* Admin link in mobile menu */}
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  onClick={closeMobileMenu}
+                  className="mobile-nav-link block px-6 py-4 text-lg font-medium text-blue-600 hover:bg-blue-50 transition-all duration-300 hover:pl-8 border-t border-gray-100 mt-2"
+                >
+                  <span className="flex items-center gap-2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7"></rect>
+                      <rect x="14" y="3" width="7" height="7"></rect>
+                      <rect x="14" y="14" width="7" height="7"></rect>
+                      <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    Admin Dashboard
+                  </span>
+                </Link>
+              )}
             </div>
 
             {/* Bottom Actions */}
             <div className="border-t border-gray-200 p-4 mt-auto">
               <div className="grid grid-cols-2 gap-3">
-                {isAuthenticated ? (
+                {isSignedIn ? (
                   <>
                     <Link
                       to="/account"
@@ -486,18 +477,16 @@ const Navbar = () => {
                       className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-blue-50 transition-all duration-300"
                     >
                       <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-500">
-                        {user?.profilePicture ? (
+                        {user?.imageUrl ? (
                           <img
-                            src={user.profilePicture}
+                            src={user.imageUrl}
                             alt="Profile"
                             className="w-full h-full object-cover"
                           />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
                             <span className="text-lg font-bold text-white">
-                              {user?.firstName?.[0]?.toUpperCase() ||
-                                user?.name?.[0]?.toUpperCase() ||
-                                "U"}
+                              {user?.firstName?.[0]?.toUpperCase() || "U"}
                             </span>
                           </div>
                         )}
@@ -508,10 +497,21 @@ const Navbar = () => {
                     </Link>
                     <button
                       onClick={() => {
-                        handleLogout();
                         closeMobileMenu();
                       }}
                       className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-red-50 transition-all duration-300"
+                    >
+                      <UserButton afterSignOutUrl="/" />
+                      <span className="text-sm font-medium text-gray-500">
+                        Account
+                      </span>
+                    </button>
+                  </>
+                ) : (
+                  <SignInButton mode="modal">
+                    <button
+                      onClick={closeMobileMenu}
+                      className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-blue-50 transition-all duration-300"
                     >
                       <svg
                         width="24"
@@ -521,38 +521,14 @@ const Navbar = () => {
                         stroke="currentColor"
                         strokeWidth="2"
                       >
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                        <polyline points="16,17 21,12 16,7"></polyline>
-                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
                       </svg>
-                      <span className="text-sm font-medium text-red-500">
-                        Log out
+                      <span className="text-sm font-medium text-gray-700">
+                        Account
                       </span>
                     </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => {
-                      closeMobileMenu();
-                      dispatch(openLogin());
-                    }}
-                    className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-blue-50 transition-all duration-300"
-                  >
-                    <svg
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                    <span className="text-sm font-medium text-gray-700">
-                      Account
-                    </span>
-                  </button>
+                  </SignInButton>
                 )}
                 <Link
                   to="/favourite"

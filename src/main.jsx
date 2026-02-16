@@ -2,15 +2,37 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
-import { Provider } from 'react-redux'
 import { BrowserRouter } from 'react-router-dom'
-import store from './redux/store.js'
+import { ClerkProvider } from '@clerk/clerk-react'
+import { ProductsProvider } from './context/ProductsContext'
+import { StoreProvider } from './context/StoreContext'
+import { FavouritesProvider } from './context/FavouritesContext'
+import { OrdersProvider } from './context/OrdersContext'
+import { AddressesProvider } from './context/AddressesContext'
+
+// Import your Publishable Key
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+
+if (!PUBLISHABLE_KEY) {
+  throw new Error('Add your Clerk Publishable Key to the .env file')
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
-    <Provider store={store}>
-    <App />
-    </Provider>
-    </BrowserRouter>
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      <BrowserRouter>
+        <ProductsProvider>
+          <StoreProvider>
+            <FavouritesProvider>
+              <OrdersProvider>
+                <AddressesProvider>
+                  <App />
+                </AddressesProvider>
+              </OrdersProvider>
+            </FavouritesProvider>
+          </StoreProvider>
+        </ProductsProvider>
+      </BrowserRouter>
+    </ClerkProvider>
   </StrictMode>,
 )

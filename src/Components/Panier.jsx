@@ -1,19 +1,16 @@
-import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import {
-  removeFromCart,
-  updateQuantity,
-  clearCart,
-} from "../redux/slice/Appslice";
-import { openRegister } from "../redux/slice/AuthSlice";
-import { addOrder } from "../redux/slice/OrdersSlice";
+import React, { useState } from "react";
+import { useUser, SignUpButton } from "@clerk/clerk-react";
+import { useStore } from "../context/StoreContext";
+import { useOrders } from "../context/OrdersContext";
+import { useAddresses } from "../context/AddressesContext";
 
 export default function Panier() {
-  const dispatch = useDispatch();
-  const cart = useSelector((state) => state.StoreApp.cart);
-  const totalItems = useSelector((state) => state.StoreApp.totalItems);
-  const isAuthenticated = useSelector((state) => state.Auth.isAuthenticated);
+  const { user, isSignedIn } = useUser();
+  const userId = user?.id;
+  const { cart, totalItems, removeFromCart, updateQuantity, clearCart } = useStore();
+  const { createOrder } = useOrders();
+  const { addresses } = useAddresses();
 
   // Checkout drawer state
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -50,40 +47,47 @@ export default function Panier() {
     // Save ordered product IDs
     setOrderedProducts(cart.map((item) => ({ id: item.id, name: item.name })));
 
-    // Create order object and save to Redux
-    const newOrder = {
-      orderNumber: newOrderNumber,
-      date: new Date().toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }),
-      items: cart.map((item) => ({
-        id: item.id,
-        name: item.name,
-        price:
-          typeof item.price === "string"
-            ? item.price.replace("$", "")
-            : item.price,
-        quantity: item.quantity,
-        image: item.image,
-        selectedColor: item.selectedColor,
-        selectedSize: item.selectedSize,
-      })),
+    // Shipping Info
+    const shippingInfo = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      address: formData.address,
+      city: formData.city,
+      email: formData.email,
+      phoneNumber: formData.phoneNumber,
+    };
+
+    // Create order object
+    const orderData = {
+      subtotal: calculateSubtotal(),
       total: calculateSubtotal(),
-      status: "confirmed",
-      shippingInfo: {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        address: formData.address,
-        city: formData.city,
-        email: formData.email,
-        phoneNumber: formData.phoneNumber,
-      },
+      status: "pending",
+      shippingInfo,
       shippingMethod: formData.shippingMethod,
       paymentMethod: formData.paymentMethod,
+      phone: formData.phoneNumber,
+      notes: "",
+      addressId: null, // For now, we're not using selected address ID from address book
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      address: formData.address,
+      city: formData.city,
     };
-    dispatch(addOrder(newOrder));
+
+    // Create order in Supabase (or local state if guest)
+    createOrder({ userId, orderData, cartItems: cart })
+      .then(() => {
+        // Show toast
+        setShowToast(true);
+        // Close drawer
+        setIsCheckoutOpen(false);
+        // Clear cart
+        clearCart(userId);
+      })
+      .catch((err) => {
+        console.error("Failed to create order", err);
+        alert("Failed to create order. Please try again.");
+      });
 
     // Show toast
     setShowToast(true);
@@ -92,9 +96,7 @@ export default function Panier() {
     setIsCheckoutOpen(false);
 
     // Clear cart after order
-    setTimeout(() => {
-      dispatch(clearCart());
-    }, 500);
+
 
     // User must manually close the confirmation - no auto-hide
   };
@@ -273,29 +275,28 @@ export default function Panier() {
             </div>
 
             {/* Option 1: Create Account - Only show for guests */}
-            {!isAuthenticated && (
-              <button
-                onClick={() => {
-                  handleCloseConfirmation();
-                  dispatch(openRegister());
-                }}
-                className="w-full bg-[#0067FF] text-white py-3 rounded-full font-bold hover:bg-[#0052CC] transition-colors mb-3 flex items-center justify-center gap-2"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+            {!isSignedIn && (
+              <SignUpButton mode="modal">
+                <button
+                  onClick={handleCloseConfirmation}
+                  className="w-full bg-[#0067FF] text-white py-3 rounded-full font-bold hover:bg-[#0052CC] transition-colors mb-3 flex items-center justify-center gap-2"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-                Create an account to track your orders
-              </button>
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                  Create an account to track your orders
+                </button>
+              </SignUpButton>
             )}
 
             {/* Option 2: Continue Shopping */}
@@ -361,6 +362,37 @@ export default function Panier() {
 
                 {/* Form */}
                 <form onSubmit={handleCheckout}>
+                  {isSignedIn && addresses.length > 0 && (
+                    <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                      <label className="block text-sm font-medium text-blue-900 mb-2">
+                        Load from Saved Address
+                      </label>
+                      <select
+                        onChange={(e) => {
+                          const addr = addresses.find((a) => a.id === e.target.value);
+                          if (addr) {
+                            setFormData((prev) => ({
+                              ...prev,
+                              firstName: addr.first_name || "",
+                              lastName: addr.last_name || "",
+                              address: addr.address || "",
+                              city: addr.city || "",
+                              phoneNumber: addr.phone || "",
+                            }));
+                          }
+                        }}
+                        className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600 bg-white"
+                      >
+                        <option value="">-- Select a saved address --</option>
+                        {addresses.map((addr) => (
+                          <option key={addr.id} value={addr.id}>
+                            {addr.first_name} {addr.last_name} - {addr.address}, {addr.city}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   {/* Shipping Address Section */}
                   <div className="mb-6">
                     <h3 className="font-bold text-sm mb-4 uppercase">
@@ -568,7 +600,7 @@ export default function Panier() {
             Shopping Cart ({totalItems} items)
           </h1>
           <button
-            onClick={() => dispatch(clearCart())}
+            onClick={() => clearCart(userId)}
             className="text-red-600 hover:text-red-700 text-sm font-medium"
           >
             Clear Cart
@@ -604,7 +636,7 @@ export default function Panier() {
                       </p>
                     </div>
                     <button
-                      onClick={() => dispatch(removeFromCart(item.cartId))}
+                      onClick={() => removeFromCart(item.cartId, userId)}
                       className="text-gray-400 hover:text-red-600 transition-colors"
                     >
                       <svg
@@ -627,11 +659,12 @@ export default function Panier() {
                     <div className="flex items-center border border-gray-300 rounded-lg">
                       <button
                         onClick={() =>
-                          dispatch(
-                            updateQuantity({
+                          updateQuantity(
+                            {
                               cartId: item.cartId,
                               quantity: item.quantity - 1,
-                            })
+                            },
+                            userId
                           )
                         }
                         className="px-3 py-1 text-gray-600 hover:text-gray-900"
@@ -643,11 +676,12 @@ export default function Panier() {
                       </span>
                       <button
                         onClick={() =>
-                          dispatch(
-                            updateQuantity({
+                          updateQuantity(
+                            {
                               cartId: item.cartId,
                               quantity: item.quantity + 1,
-                            })
+                            },
+                            userId
                           )
                         }
                         className="px-3 py-1 text-gray-600 hover:text-gray-900"

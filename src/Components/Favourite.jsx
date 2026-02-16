@@ -1,13 +1,16 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import { toggleFavourite } from "../redux/slice/FavouritesSlice";
-import { addToCart } from "../redux/slice/Appslice";
+import { useUser } from "@clerk/clerk-react";
+import { useFavourites } from "../context/FavouritesContext";
+import { useStore } from "../context/StoreContext";
+import { useProducts } from "../context/ProductsContext";
 
 export default function Favourite() {
-  const dispatch = useDispatch();
-  const favourites = useSelector((state) => state.Favourites.items);
-  const { colors: colorOptions } = useSelector((state) => state.Products);
+  const { user, isSignedIn } = useUser();
+  const userId = user?.id;
+  const { items: favourites, toggleFavourite } = useFavourites();
+  const { addToCart } = useStore();
+  const { colors: colorOptions } = useProducts();
   const [selectedSizes, setSelectedSizes] = useState({});
 
   const sizes = ["XS", "S", "M", "L", "XL", "XXL"];
@@ -21,8 +24,8 @@ export default function Favourite() {
 
   const handleAddToCart = (product) => {
     const size = selectedSizes[product.id] || "M";
-    dispatch(
-      addToCart({
+    addToCart(
+      {
         cartId: `${product.id}-${size}-${product.color}-${Date.now()}`,
         id: product.id,
         name: product.name,
@@ -31,7 +34,8 @@ export default function Favourite() {
         size: size,
         color: product.color,
         quantity: 1,
-      })
+      },
+      userId
     );
   };
 
@@ -93,7 +97,7 @@ export default function Favourite() {
               >
                 {/* Wishlist Icon - Always visible and filled */}
                 <button
-                  onClick={() => dispatch(toggleFavourite(product))}
+                  onClick={() => toggleFavourite(product, userId)}
                   className="absolute top-4 right-4 z-10 bg-blue-500 text-white rounded-full p-2 shadow-md hover:bg-blue-600 transition-colors"
                 >
                   <svg
@@ -157,11 +161,10 @@ export default function Favourite() {
                       <button
                         key={size}
                         onClick={() => handleSizeSelect(product.id, size)}
-                        className={`px-2 py-1 text-xs rounded border transition-colors ${
-                          selectedSizes[product.id] === size
+                        className={`px-2 py-1 text-xs rounded border transition-colors ${selectedSizes[product.id] === size
                             ? "bg-blue-600 text-white border-blue-600"
                             : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"
-                        }`}
+                          }`}
                       >
                         {size}
                       </button>

@@ -1,7 +1,8 @@
 import React, { useState, useRef, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import { toggleFavourite } from "../redux/slice/FavouritesSlice";
+import { useUser } from "@clerk/clerk-react";
+import { useProducts } from "../context/ProductsContext";
+import { useFavourites } from "../context/FavouritesContext";
 import Footer from "../Footer/Footer";
 import {
   useHeroAnimation,
@@ -13,12 +14,11 @@ import {
 } from "../hooks/useGSAP";
 
 export default function Home() {
-  const dispatch = useDispatch();
+  const { user, isSignedIn } = useUser();
+  const userId = user?.id;
   const [activeFilter, setActiveFilter] = useState("all");
-  const { allProducts, colors: colorOptions } = useSelector(
-    (state) => state.Products
-  );
-  const favourites = useSelector((state) => state.Favourites.items);
+  const { allProducts, colors: colorOptions } = useProducts();
+  const { items: favourites, toggleFavourite } = useFavourites();
 
   // Animation refs
   const heroRefs = useHeroAnimation();
@@ -134,8 +134,8 @@ export default function Home() {
     activeFilter === "all"
       ? products
       : products.filter(
-          (p) => p.category.toLowerCase() === activeFilter.toLowerCase()
-        );
+        (p) => p.category.toLowerCase() === activeFilter.toLowerCase()
+      );
 
   const categories = [
     {
@@ -372,11 +372,10 @@ export default function Home() {
             <button
               key={filter}
               onClick={() => setActiveFilter(filter)}
-              className={`filter-btn px-4 md:px-6 py-1.5 md:py-2 rounded-full font-medium transition-all text-sm md:text-base ${
-                activeFilter === filter
+              className={`filter-btn px-4 md:px-6 py-1.5 md:py-2 rounded-full font-medium transition-all text-sm md:text-base ${activeFilter === filter
                   ? "bg-blue-600 text-white shadow-lg shadow-blue-600/25"
                   : "bg-white text-gray-700 hover:bg-gray-100 hover:shadow-md"
-              }`}
+                }`}
             >
               {filter === "all"
                 ? "All Products"
@@ -434,13 +433,12 @@ export default function Home() {
                 <button
                   onClick={(e) => {
                     e.preventDefault();
-                    dispatch(toggleFavourite(product));
+                    toggleFavourite(product, userId);
                   }}
-                  className={`absolute top-4 right-4 z-10 rounded-full p-2 shadow-md transition-all ${
-                    favourites.some((fav) => fav.id === product.id)
+                  className={`absolute top-4 right-4 z-10 rounded-full p-2 shadow-md transition-all ${favourites.some((fav) => fav.id === product.id)
                       ? "bg-red-500 text-white hover:bg-red-600"
                       : "bg-white text-gray-700 hover:bg-gray-100"
-                  }`}
+                    }`}
                 >
                   <svg
                     width="20"

@@ -1,15 +1,11 @@
 import React, { useState, useRef, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
+import { useUser } from "@clerk/clerk-react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Footer from "../Footer/Footer";
-import {
-  setFilter,
-  clearFilters,
-  applySort,
-} from "../redux/slice/ProductsSlice";
-import { toggleFavourite } from "../redux/slice/FavouritesSlice";
+import { useProducts } from "../context/ProductsContext";
+import { useFavourites } from "../context/FavouritesContext";
 import { EASE, DURATION } from "../animations/config";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -32,10 +28,11 @@ const ChevronIcon = ({ isOpen }) => (
 );
 
 export default function Collection() {
-  const dispatch = useDispatch();
-  const { filteredProducts, filters, categories, productTypes, colors, sizes } =
-    useSelector((state) => state.Products);
-  const favourites = useSelector((state) => state.Favourites.items);
+  const { user } = useUser();
+  const userId = user?.id;
+  const { filteredProducts, filters, categories, productTypes, colors, sizes, setFilter: setFilterCtx, clearFilters: clearFiltersCtx, applySort: applySortCtx } =
+    useProducts();
+  const { items: favourites, toggleFavourite } = useFavourites();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState("grid3");
@@ -65,17 +62,17 @@ export default function Collection() {
   };
 
   const handleFilterChange = (filterType, value) => {
-    dispatch(setFilter({ filterType, value }));
+    setFilterCtx({ filterType, value });
     setCurrentPage(1);
   };
 
   const handleClearFilters = () => {
-    dispatch(clearFilters());
+    clearFiltersCtx();
     setCurrentPage(1);
   };
 
   const handleSortChange = (e) => {
-    dispatch(applySort(e.target.value));
+    applySortCtx(e.target.value);
   };
 
   const ratings = [5, 4, 3, 2, 1];
@@ -313,9 +310,8 @@ export default function Collection() {
             <div className="hidden md:flex gap-2">
               <button
                 onClick={() => setViewMode("grid2")}
-                className={`p-2 rounded ${
-                  viewMode === "grid2" ? "bg-gray-200" : "hover:bg-gray-100"
-                }`}
+                className={`p-2 rounded ${viewMode === "grid2" ? "bg-gray-200" : "hover:bg-gray-100"
+                  }`}
               >
                 <div className="grid grid-cols-2 gap-0.5">
                   {[...Array(4)].map((_, i) => (
@@ -328,11 +324,10 @@ export default function Collection() {
               </button>
               <button
                 onClick={() => setViewMode("grid3")}
-                className={`p-2 rounded ${
-                  viewMode === "grid3"
+                className={`p-2 rounded ${viewMode === "grid3"
                     ? "bg-blue-100 border border-blue-600"
                     : "hover:bg-gray-100"
-                }`}
+                  }`}
               >
                 <div className="grid grid-cols-3 gap-0.5">
                   {[...Array(9)].map((_, i) => (
@@ -345,9 +340,8 @@ export default function Collection() {
               </button>
               <button
                 onClick={() => setViewMode("grid4")}
-                className={`p-2 rounded ${
-                  viewMode === "grid4" ? "bg-gray-200" : "hover:bg-gray-100"
-                }`}
+                className={`p-2 rounded ${viewMode === "grid4" ? "bg-gray-200" : "hover:bg-gray-100"
+                  }`}
               >
                 <div className="grid grid-cols-4 gap-0.5">
                   {[...Array(16)].map((_, i) => (
@@ -360,9 +354,8 @@ export default function Collection() {
               </button>
               <button
                 onClick={() => setViewMode("list")}
-                className={`p-2 rounded ${
-                  viewMode === "list" ? "bg-gray-200" : "hover:bg-gray-100"
-                }`}
+                className={`p-2 rounded ${viewMode === "list" ? "bg-gray-200" : "hover:bg-gray-100"
+                  }`}
               >
                 <div className="flex flex-col gap-0.5">
                   {[...Array(3)].map((_, i) => (
@@ -547,9 +540,8 @@ export default function Collection() {
                         {[...Array(5)].map((_, i) => (
                           <span
                             key={i}
-                            className={`text-sm ${
-                              i < rating ? "text-yellow-400" : "text-gray-300"
-                            }`}
+                            className={`text-sm ${i < rating ? "text-yellow-400" : "text-gray-300"
+                              }`}
                           >
                             ★
                           </span>
@@ -639,11 +631,10 @@ export default function Collection() {
                     <button
                       key={color.name}
                       onClick={() => handleFilterChange("colors", color.name)}
-                      className={`w-8 h-8 rounded-full border-2 transition-all ${
-                        filters.colors.includes(color.name)
+                      className={`w-8 h-8 rounded-full border-2 transition-all ${filters.colors.includes(color.name)
                           ? "border-blue-600 ring-2 ring-blue-200"
                           : "border-gray-300 hover:border-gray-400"
-                      }`}
+                        }`}
                       style={{ backgroundColor: color.value }}
                       title={color.name}
                     />
@@ -667,11 +658,10 @@ export default function Collection() {
                     <button
                       key={size}
                       onClick={() => handleFilterChange("sizes", size)}
-                      className={`px-3 py-1.5 text-sm border rounded-md transition-colors ${
-                        filters.sizes.includes(size)
+                      className={`px-3 py-1.5 text-sm border rounded-md transition-colors ${filters.sizes.includes(size)
                           ? "bg-blue-600 text-white border-blue-600"
                           : "border-gray-300 text-gray-700 hover:border-gray-400"
-                      }`}
+                        }`}
                     >
                       {size}
                     </button>
@@ -884,11 +874,10 @@ export default function Collection() {
                               {[...Array(5)].map((_, i) => (
                                 <span
                                   key={i}
-                                  className={`text-sm ${
-                                    i < rating
+                                  className={`text-sm ${i < rating
                                       ? "text-yellow-400"
                                       : "text-gray-300"
-                                  }`}
+                                    }`}
                                 >
                                   ★
                                 </span>
@@ -984,11 +973,10 @@ export default function Collection() {
                             onClick={() =>
                               handleFilterChange("colors", color.name)
                             }
-                            className={`w-8 h-8 rounded-full border-2 transition-all ${
-                              filters.colors.includes(color.name)
+                            className={`w-8 h-8 rounded-full border-2 transition-all ${filters.colors.includes(color.name)
                                 ? "border-blue-600 ring-2 ring-blue-200"
                                 : "border-gray-300 hover:border-gray-400"
-                            }`}
+                              }`}
                             style={{ backgroundColor: color.value }}
                             title={color.name}
                           />
@@ -1012,11 +1000,10 @@ export default function Collection() {
                           <button
                             key={size}
                             onClick={() => handleFilterChange("sizes", size)}
-                            className={`px-3 py-1.5 text-sm border rounded-md transition-colors ${
-                              filters.sizes.includes(size)
+                            className={`px-3 py-1.5 text-sm border rounded-md transition-colors ${filters.sizes.includes(size)
                                 ? "bg-blue-600 text-white border-blue-600"
                                 : "border-gray-300 text-gray-700 hover:border-gray-400"
-                            }`}
+                              }`}
                           >
                             {size}
                           </button>
@@ -1072,15 +1059,14 @@ export default function Collection() {
             ) : (
               <>
                 <div
-                  className={`grid gap-4 md:gap-6 ${
-                    viewMode === "grid2"
+                  className={`grid gap-4 md:gap-6 ${viewMode === "grid2"
                       ? "grid-cols-2"
                       : viewMode === "grid3"
-                      ? "grid-cols-2 lg:grid-cols-3"
-                      : viewMode === "grid4"
-                      ? "grid-cols-2 lg:grid-cols-4"
-                      : "grid-cols-1"
-                  }`}
+                        ? "grid-cols-2 lg:grid-cols-3"
+                        : viewMode === "grid4"
+                          ? "grid-cols-2 lg:grid-cols-4"
+                          : "grid-cols-1"
+                    }`}
                 >
                   {currentProducts.map((product) => (
                     <Link
@@ -1102,13 +1088,12 @@ export default function Collection() {
                       <button
                         onClick={(e) => {
                           e.preventDefault();
-                          dispatch(toggleFavourite(product));
+                          toggleFavourite(product, userId);
                         }}
-                        className={`absolute top-4 right-4 z-10 rounded-full p-2 shadow-md transition-all opacity-0 group-hover:opacity-100 ${
-                          favourites.some((fav) => fav.id === product.id)
+                        className={`absolute top-4 right-4 z-10 rounded-full p-2 shadow-md transition-all opacity-0 group-hover:opacity-100 ${favourites.some((fav) => fav.id === product.id)
                             ? "bg-blue-500 text-white hover:bg-blue-600 opacity-100"
                             : "bg-white text-gray-700 hover:bg-gray-100"
-                        }`}
+                          }`}
                       >
                         <svg
                           width="18"
@@ -1195,11 +1180,10 @@ export default function Collection() {
                           setCurrentPage((prev) => Math.max(1, prev - 1))
                         }
                         disabled={currentPage === 1}
-                        className={`px-3 py-2 text-sm ${
-                          currentPage === 1
+                        className={`px-3 py-2 text-sm ${currentPage === 1
                             ? "text-gray-300"
                             : "text-gray-500 hover:text-gray-700"
-                        }`}
+                          }`}
                       >
                         Previous
                       </button>
@@ -1209,11 +1193,10 @@ export default function Collection() {
                           <button
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
-                            className={`w-8 h-8 rounded text-sm font-medium ${
-                              currentPage === pageNum
+                            className={`w-8 h-8 rounded text-sm font-medium ${currentPage === pageNum
                                 ? "bg-blue-600 text-white"
                                 : "hover:bg-gray-100"
-                            }`}
+                              }`}
                           >
                             {pageNum}
                           </button>
@@ -1224,11 +1207,10 @@ export default function Collection() {
                           <span className="text-gray-400">...</span>
                           <button
                             onClick={() => setCurrentPage(totalPages)}
-                            className={`w-8 h-8 rounded text-sm ${
-                              currentPage === totalPages
+                            className={`w-8 h-8 rounded text-sm ${currentPage === totalPages
                                 ? "bg-blue-600 text-white font-medium"
                                 : "hover:bg-gray-100"
-                            }`}
+                              }`}
                           >
                             {totalPages}
                           </button>
@@ -1241,11 +1223,10 @@ export default function Collection() {
                           )
                         }
                         disabled={currentPage === totalPages}
-                        className={`px-3 py-2 text-sm ${
-                          currentPage === totalPages
+                        className={`px-3 py-2 text-sm ${currentPage === totalPages
                             ? "text-gray-300"
                             : "text-gray-700 hover:text-gray-900"
-                        }`}
+                          }`}
                       >
                         Next
                       </button>
