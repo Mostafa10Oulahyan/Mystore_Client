@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback } from "react";
-import { supabase } from "../lib/supabase";
+import { useAuth } from "@clerk/clerk-react";
+import { supabase, getSupabase } from "../lib/supabase";
 
 const AddressesContext = createContext();
 
@@ -10,13 +11,17 @@ export function useAddresses() {
 export function AddressesProvider({ children }) {
     const [addresses, setAddresses] = useState([]);
     const [addressesLoading, setAddressesLoading] = useState(false);
+    const { getToken } = useAuth();
 
     // ─── Fetch addresses ───
     const fetchAddresses = useCallback(async (userId) => {
         if (!userId) return;
         setAddressesLoading(true);
         try {
-            const { data, error } = await supabase
+            const token = await getToken({ template: "supabase" });
+            const client = getSupabase(token);
+
+            const { data, error } = await client
                 .from("addresses")
                 .select("*")
                 .eq("user_id", userId)
@@ -34,7 +39,10 @@ export function AddressesProvider({ children }) {
     // ─── Add address ───
     const addAddress = useCallback(async (userId, address) => {
         try {
-            const { data, error } = await supabase
+            const token = await getToken({ template: "supabase" });
+            const client = getSupabase(token);
+
+            const { data, error } = await client
                 .from("addresses")
                 .insert({ user_id: userId, ...address })
                 .select()
@@ -52,7 +60,10 @@ export function AddressesProvider({ children }) {
     // ─── Update address ───
     const updateAddress = useCallback(async (addressId, updates) => {
         try {
-            const { data, error } = await supabase
+            const token = await getToken({ template: "supabase" });
+            const client = getSupabase(token);
+
+            const { data, error } = await client
                 .from("addresses")
                 .update(updates)
                 .eq("id", addressId)
@@ -71,7 +82,10 @@ export function AddressesProvider({ children }) {
     // ─── Delete address ───
     const deleteAddress = useCallback(async (addressId) => {
         try {
-            const { error } = await supabase
+            const token = await getToken({ template: "supabase" });
+            const client = getSupabase(token);
+
+            const { error } = await client
                 .from("addresses")
                 .delete()
                 .eq("id", addressId);
@@ -87,14 +101,17 @@ export function AddressesProvider({ children }) {
     // ─── Set default address ───
     const setDefaultAddress = useCallback(async (userId, addressId) => {
         try {
+            const token = await getToken({ template: "supabase" });
+            const client = getSupabase(token);
+
             // Unset all defaults first
-            await supabase
+            await client
                 .from("addresses")
                 .update({ is_default: false })
                 .eq("user_id", userId);
 
             // Set the new default
-            await supabase
+            await client
                 .from("addresses")
                 .update({ is_default: true })
                 .eq("id", addressId);

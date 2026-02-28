@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback } from "react";
-import { supabase } from "../lib/supabase";
+import { useAuth } from "@clerk/clerk-react";
+import { supabase, getSupabase } from "../lib/supabase";
 
 const FavouritesContext = createContext();
 
@@ -10,13 +11,17 @@ export function useFavourites() {
 export function FavouritesProvider({ children }) {
     const [items, setItems] = useState([]);
     const [favouritesLoading, setFavouritesLoading] = useState(false);
+    const { getToken } = useAuth();
 
     // ─── Fetch favourites from Supabase ───
     const fetchFavourites = useCallback(async (userId) => {
         if (!userId) return;
         setFavouritesLoading(true);
         try {
-            const { data, error } = await supabase
+            const token = await getToken({ template: "supabase" });
+            const client = getSupabase(token);
+
+            const { data, error } = await client
                 .from("favorites")
                 .select(`
           id, product_id,
@@ -77,7 +82,10 @@ export function FavouritesProvider({ children }) {
         // Sync to Supabase if signed in
         if (userId) {
             try {
-                const { data: existing } = await supabase
+                const token = await getToken({ template: "supabase" });
+                const client = getSupabase(token);
+
+                const { data: existing } = await client
                     .from("favorites")
                     .select("id")
                     .eq("user_id", userId)
@@ -85,9 +93,9 @@ export function FavouritesProvider({ children }) {
                     .single();
 
                 if (existing) {
-                    await supabase.from("favorites").delete().eq("id", existing.id);
+                    await client.from("favorites").delete().eq("id", existing.id);
                 } else {
-                    await supabase.from("favorites").insert({
+                    await client.from("favorites").insert({
                         user_id: userId,
                         product_id: product.id,
                     });
@@ -104,7 +112,10 @@ export function FavouritesProvider({ children }) {
 
         if (userId) {
             try {
-                await supabase
+                const token = await getToken({ template: "supabase" });
+                const client = getSupabase(token);
+
+                await client
                     .from("favorites")
                     .delete()
                     .eq("user_id", userId)

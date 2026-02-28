@@ -30,6 +30,18 @@ export default function Panier() {
     shippingMethod: "Livraison standard",
   });
 
+  // Auto-fill for logged-in users who might not have saved addresses yet
+  React.useEffect(() => {
+    if (isSignedIn && user) {
+      setFormData(prev => ({
+        ...prev,
+        firstName: prev.firstName || user.firstName || "",
+        lastName: prev.lastName || user.lastName || "",
+        email: prev.email || user.primaryEmailAddress?.emailAddress || "",
+      }));
+    }
+  }, [isSignedIn, user]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -59,8 +71,8 @@ export default function Panier() {
 
     // Create order object
     const orderData = {
-      subtotal: calculateSubtotal(),
-      total: calculateSubtotal(),
+      subtotal: parseFloat(calculateSubtotal()),
+      total: parseFloat(calculateSubtotal()),
       status: "pending",
       shippingInfo,
       shippingMethod: formData.shippingMethod,

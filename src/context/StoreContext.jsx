@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback } from "react";
-import { supabase } from "../lib/supabase";
+import { useAuth } from "@clerk/clerk-react";
+import { supabase, getSupabase } from "../lib/supabase";
 
 const StoreContext = createContext();
 
@@ -11,6 +12,7 @@ export function StoreProvider({ children }) {
     const [cart, setCart] = useState([]);
     const [totalItems, setTotalItems] = useState(0);
     const [cartLoading, setCartLoading] = useState(false);
+    const { getToken } = useAuth();
 
     const recalcTotal = (items) =>
         items.reduce((total, item) => total + item.quantity, 0);
@@ -20,7 +22,10 @@ export function StoreProvider({ children }) {
         if (!userId) return;
         setCartLoading(true);
         try {
-            const { data, error } = await supabase
+            const token = await getToken({ template: "supabase" });
+            const client = getSupabase(token);
+
+            const { data, error } = await client
                 .from("cart_items")
                 .select(`
           id, product_id, color, size, quantity,
@@ -79,7 +84,10 @@ export function StoreProvider({ children }) {
         // Sync to Supabase if signed in
         if (userId) {
             try {
-                const { data: existing } = await supabase
+                const token = await getToken({ template: "supabase" });
+                const client = getSupabase(token);
+
+                const { data: existing } = await client
                     .from("cart_items")
                     .select("id, quantity")
                     .eq("user_id", userId)
@@ -89,12 +97,12 @@ export function StoreProvider({ children }) {
                     .single();
 
                 if (existing) {
-                    await supabase
+                    await client
                         .from("cart_items")
                         .update({ quantity: existing.quantity + item.quantity })
                         .eq("id", existing.id);
                 } else {
-                    await supabase.from("cart_items").insert({
+                    await client.from("cart_items").insert({
                         user_id: userId,
                         product_id: item.id,
                         color: item.color,
@@ -118,7 +126,9 @@ export function StoreProvider({ children }) {
 
         if (userId) {
             try {
-                await supabase.from("cart_items").delete().eq("id", cartId);
+                const token = await getToken({ template: "supabase" });
+                const client = getSupabase(token);
+                await client.from("cart_items").delete().eq("id", cartId);
             } catch (err) {
                 console.error("Error removing cart item:", err.message);
             }
@@ -142,10 +152,13 @@ export function StoreProvider({ children }) {
 
         if (userId) {
             try {
+                const token = await getToken({ template: "supabase" });
+                const client = getSupabase(token);
+
                 if (quantity <= 0) {
-                    await supabase.from("cart_items").delete().eq("id", cartId);
+                    await client.from("cart_items").delete().eq("id", cartId);
                 } else {
-                    await supabase
+                    await client
                         .from("cart_items")
                         .update({ quantity })
                         .eq("id", cartId);
@@ -163,7 +176,9 @@ export function StoreProvider({ children }) {
 
         if (userId) {
             try {
-                await supabase.from("cart_items").delete().eq("user_id", userId);
+                const token = await getToken({ template: "supabase" });
+                const client = getSupabase(token);
+                await client.from("cart_items").delete().eq("user_id", userId);
             } catch (err) {
                 console.error("Error clearing cart:", err.message);
             }

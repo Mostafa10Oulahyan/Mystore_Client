@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { useUser } from "@clerk/clerk-react";
-import { supabase } from "../lib/supabase";
+import { useUser, useAuth } from "@clerk/clerk-react";
+import { getSupabase } from "../lib/supabase";
 import { useStore } from "../context/StoreContext";
 import { useFavourites } from "../context/FavouritesContext";
 import { useOrders } from "../context/OrdersContext";
@@ -8,6 +8,7 @@ import { useAddresses } from "../context/AddressesContext";
 
 export function useUserSync() {
     const { isSignedIn, user } = useUser();
+    const { getToken } = useAuth();
     const { fetchCart } = useStore();
     const { fetchFavourites } = useFavourites();
     const { fetchOrders } = useOrders();
@@ -21,6 +22,9 @@ export function useUserSync() {
             const userId = user.id;
 
             try {
+                const token = await getToken({ template: "supabase" });
+                const supabase = getSupabase(token);
+
                 // Upsert user into Supabase
                 await supabase.from("users").upsert(
                     {
@@ -28,12 +32,18 @@ export function useUserSync() {
                         email: user.primaryEmailAddress?.emailAddress || "",
                         first_name: user.firstName || "",
                         last_name: user.lastName || "",
-                        avatar_url: user.imageUrl || null,
+                        profile_image_url: user.imageUrl || null,
                     },
                     { onConflict: "id" }
                 );
             } catch (err) {
-                console.error("Error syncing user:", err.message);
+                console.error("Error syncing user:", err);
+                console.error("User Sync Error Details:", {
+                    message: err.message,
+                    code: err.code,
+                    details: err.details,
+                    hint: err.hint
+                });
             }
 
             // Hydrate all data from Supabase
