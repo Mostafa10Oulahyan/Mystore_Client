@@ -84,6 +84,7 @@ export default function Panier() {
       lastName: formData.lastName,
       address: formData.address,
       city: formData.city,
+      email: formData.email,
     };
 
     // Create order in Supabase (or local state if guest)

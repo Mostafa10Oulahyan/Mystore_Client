@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useLayoutEffect } from "react";
+import React, { useState, useMemo, useRef, useLayoutEffect, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { useUser } from "@clerk/clerk-react";
@@ -9,6 +9,7 @@ import Footer from "../Footer/Footer";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { EASE, DURATION } from "../animations/config";
+import { supabase } from "../lib/supabase";
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -22,8 +23,8 @@ export default function ProductDetail() {
   const { addToCart } = useStore();
 
   // Find the product from Redux store
-  const foundProduct = allProducts.find((p) => p.id === parseInt(id));
-  const isFavourite = favourites.some((fav) => fav.id === parseInt(id));
+  const foundProduct = allProducts.find((p) => String(p.id) === String(id));
+  const isFavourite = favourites.some((fav) => String(fav.id) === String(id));
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState(
@@ -39,6 +40,14 @@ export default function ProductDetail() {
   const [searchQuery, setSearchQuery] = useState("");
   const [mediaFilter, setMediaFilter] = useState("all"); // all, with-images, with-videos
   const [sortBy, setSortBy] = useState("recent");
+
+  // Real dynamic reviews
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [newReview, setNewReview] = useState({ rating: 5, title: "", content: "" });
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const foundReviewCount = reviews.length;
 
   // Carousel ref for touch scrolling
   const carouselRef = useRef(null);
@@ -239,6 +248,85 @@ export default function ProductDetail() {
     return () => ctx.revert();
   }, [id]); // Re-run when product changes
 
+  // Fetch reviews from Supabase
+  useEffect(() => {
+    if (!id) return;
+    fetchReviews();
+  }, [id, sortBy]);
+
+  async function fetchReviews() {
+    setReviewsLoading(true);
+    try {
+      let query = supabase
+        .from("reviews")
+        .select("*")
+        .eq("product_id", id);
+
+      if (sortBy === "recent") {
+        query = query.order("created_at", { ascending: false });
+      } else if (sortBy === "highest") {
+        query = query.order("rating", { ascending: false });
+      } else if (sortBy === "lowest") {
+        query = query.order("rating", { ascending: true });
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      // Transform to match UI expectations
+      const transformed = (data || []).map(r => ({
+        id: r.id,
+        author: r.customer_name || "Anonymous",
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.customer_name || r.id}`,
+        rating: r.rating,
+        date: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        title: r.title || "User Review",
+        content: r.content,
+        helpful: { yes: r.helpful_count || 0, no: 0 },
+        images: r.images || [],
+        tags: r.tags || []
+      }));
+
+      setReviews(transformed);
+    } catch (err) {
+      console.error("Error fetching reviews:", err);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }
+
+  async function handleReviewSubmit(e) {
+    e.preventDefault();
+    if (!isSignedIn) return;
+    setSubmittingReview(true);
+
+    try {
+      const { error } = await supabase
+        .from("reviews")
+        .insert([{
+          product_id: id,
+          user_id: userId,
+          customer_name: user.fullName || user.username || "Anonymous",
+          rating: newReview.rating,
+          title: newReview.title,
+          content: newReview.content,
+          created_at: new Date().toISOString()
+        }]);
+
+      if (error) throw error;
+
+      setNewReview({ rating: 5, title: "", content: "" });
+      setShowReviewForm(false);
+      fetchReviews();
+      alert("Review submitted successfully!");
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      alert("Failed to submit review: " + err.message);
+    } finally {
+      setSubmittingReview(false);
+    }
+  }
+
   // Build product data from Redux or use fallback
   const product = foundProduct
     ? {
@@ -248,162 +336,92 @@ export default function ProductDetail() {
       price: `$${foundProduct.price.toFixed(2)}`,
       priceNum: foundProduct.price,
       rating: foundProduct.rating,
-      reviews: foundProduct.reviews,
+      reviews: foundReviewCount, // Use the real review count from the local state
       colors: colorOptions.filter((c) =>
-        ["Black", "White", "Blue", "Red", foundProduct.color].includes(c.name)
+        (foundProduct.colors || []).includes(c.name)
       ),
-      sizes: foundProduct.sizes,
-      images: [
-        foundProduct.image,
-        foundProduct.image
-          .replace("w=400", "w=600")
-          .replace("h=500", "h=700"),
-        `https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=600&h=700&fit=crop`,
-        `https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&h=700&fit=crop`,
-      ],
+      sizes: foundProduct.sizes || [],
+      images: foundProduct.images && foundProduct.images.length > 0
+        ? foundProduct.images
+        : [foundProduct.image],
       estimatedDelivery: "Dec 28 2025 - Jan 02 2026",
       features: [
-        "Model is 6'1\"",
-        `Wearing size ${foundProduct.sizes?.[Math.floor(foundProduct.sizes.length / 2)] ||
-        "M"
-        }`,
-        "Regular fit",
-        "Machine wash cold with like colors. Tumble dry low",
         "Premium quality materials",
         `Category: ${foundProduct.category} - ${foundProduct.productType}`,
         "Questions? Email us at support@fashionova.com",
       ],
-      description: `Elevate your wardrobe with this premium ${foundProduct.name
-        }. Crafted with attention to detail, this ${foundProduct.productType.toLowerCase()} offers both style and comfort. Perfect for any occasion, it features a modern design that complements your personal style. Made from high-quality materials, it ensures durability and a perfect fit.`,
       category: foundProduct.category,
       productType: foundProduct.productType,
+      // This line copies all color/size combinations (variants) from the database to this product object.
+      // The "|| []" is a safety fallback so the app doesn't crash if variants are missing.
+      variants: foundProduct.variants || [],
     }
-    : {
-      id: id || 1,
-      name: "Blue Button Down 100% Linen T-Shirt",
-      subtitle:
-        "Our best-selling world-level Original shorts with an elastic waistband",
-      price: "$42.00",
-      priceNum: 42.0,
-      rating: 4.8,
-      reviews: 3102,
-      colors: [
-        { name: "Blue", value: "#4A90D9" },
-        { name: "Green", value: "#2E8B57" },
-        { name: "Dark Gray", value: "#4A4A4A" },
-        { name: "White", value: "#FFFFFF" },
-      ],
-      sizes: ["XS", "S", "M", "L", "XL", "XXL"],
-      images: [
-        "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=600&h=700&fit=crop",
-        "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&h=700&fit=crop",
-        "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600&h=700&fit=crop",
-        "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=600&h=700&fit=crop",
-      ],
-      estimatedDelivery: "Dec 28 2025 - Jan 02 2026",
-      features: [
-        "Model is 6'1\"",
-        "Wearing size 2",
-        "Regular fit",
-        "Machine wash cold with like colors. Tumble dry low",
-        "Made in Japan",
-        "Model: JMGN0901 / GMStyle 01s G20073",
-        "Questions? Email us at support@fashionova.com",
-      ],
-      description:
-        "A great run starts with the right gear. Made from a 100% aurora stretch cotton, the Carpenter Pant has a flattering high-rise, relaxed straight leg, and slightly cropped fit—plus cargo pockets and hammer loop for an original look.",
-      category: "Men",
-      productType: "Shirts",
-    };
+    : null; // Handle null product in the return
+
+  // Availability helpers (Updated to be independent as requested)
+  const isColorAvailable = (colorName) => {
+    if (!product?.variants) return true;
+    // A color is available if it exists in ANY size for this product and is in stock
+    return product.variants.some(
+      (v) => v.color.toLowerCase() === colorName.toLowerCase() &&
+        v.stock_quantity > 0 &&
+        v.is_available
+    );
+  };
+
+  const isSizeAvailable = (sizeName) => {
+    if (!product?.variants) return true;
+    // A size is available if it exists in ANY color for this product and is in stock
+    return product.variants.some(
+      (v) => v.size === sizeName &&
+        v.stock_quantity > 0 &&
+        v.is_available
+    );
+  };
+
+  // Helper to handle color selection and auto-adjust size if needed
+  const handleColorSelect = (colorName) => {
+    setSelectedColor(colorName);
+    // Check if current size exists for this new color
+    const comboExists = product.variants.some(
+      (v) => v.color.toLowerCase() === colorName.toLowerCase() && v.size === selectedSize && v.stock_quantity > 0
+    );
+    // If not, auto-select first available size for this color
+    if (!comboExists) {
+      const firstAvailableSize = product.variants.find(
+        (v) => v.color.toLowerCase() === colorName.toLowerCase() && v.stock_quantity > 0
+      )?.size;
+      if (firstAvailableSize) setSelectedSize(firstAvailableSize);
+    }
+  };
+
+  // Helper to handle size selection and auto-adjust color if needed
+  const handleSizeSelect = (sizeName) => {
+    setSelectedSize(sizeName);
+    // Check if current color exists for this new size
+    const comboExists = product.variants.some(
+      (v) => v.size === sizeName && v.color.toLowerCase() === selectedColor.toLowerCase() && v.stock_quantity > 0
+    );
+    // If not, auto-select first available color for this size
+    if (!comboExists) {
+      const firstAvailableColor = product.variants.find(
+        (v) => v.size === sizeName && v.stock_quantity > 0
+      )?.color;
+      if (firstAvailableColor) setSelectedColor(firstAvailableColor);
+    }
+  };
 
   // Get related products from the same category
   const relatedProducts = allProducts
     .filter(
       (p) =>
-        p.id !== parseInt(id) &&
+        String(p.id) !== String(id) &&
         (p.category === product.category ||
           p.productType === product.productType)
     )
     .slice(0, 4);
 
-  const reviews = [
-    {
-      id: 1,
-      author: "Annie Bentley",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=50&h=50&fit=crop",
-      rating: 5,
-      date: "Sept. 2022",
-      title: "So Comfortable & No Toe Seam",
-      content:
-        "Perfect fit for me. I am 7 Tall, 165 lbs and have wide shoulders which tend to make me debate between medium and large shirt sizes a lot. Medium fit nicely on my shoulders and had good length too.",
-      helpful: { yes: 5, no: 2 },
-      images: [],
-      tags: ["Fit", "Shoulder", "Comfort"],
-    },
-    {
-      id: 2,
-      author: "Abdul Macdonald",
-      avatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop",
-      rating: 4,
-      date: "Sept. 2022",
-      title: "Runs small after washing",
-      content:
-        "It's the best cotton shirt for daily use, soft and comfortable. After washing them, despite tumble drying on low heat, they shrunk and look More loose like S. Also about that if you like tight or loose clothing, as structure didn't change and neither did its color, it just shrunk a little.",
-      helpful: { yes: 0, no: 2 },
-      images: [
-        "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=100&h=100&fit=crop",
-        "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=100&h=100&fit=crop",
-        "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=100&h=100&fit=crop",
-      ],
-      tags: ["Fit", "Color", "Fabric", "Problem"],
-    },
-    {
-      id: 3,
-      author: "Owen Leigh Castaneda",
-      avatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop",
-      rating: 5,
-      date: "Aug. 2022",
-      title: "Durable undershirt",
-      content:
-        "I've used These both as an undershirt and as a normal shirt. super comfortable and durable.",
-      helpful: { yes: 8, no: 0 },
-      images: [],
-      tags: ["Material", "Fabric"],
-    },
-    {
-      id: 4,
-      author: "Sarah Johnson",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=50&h=50&fit=crop",
-      rating: 3,
-      date: "Sept. 2022",
-      title: "Nice shirts but sizing issues",
-      content:
-        "Finally a t-shirt I can actually suck in if I want. longer than all the dept store brands FOL, Hanes, etc. But the weight is a bit heavier than expected.",
-      helpful: { yes: 5, no: 2 },
-      images: [],
-      tags: ["Fit", "Weight", "Problem"],
-    },
-    {
-      id: 5,
-      author: "Michael Chen",
-      avatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop",
-      rating: 5,
-      date: "Oct. 2022",
-      title: "Love the color and fabric",
-      content:
-        "Perfect fit for me. The color is exactly as shown in the pictures. The fabric feels premium and soft against the skin. Highly recommended!",
-      helpful: { yes: 12, no: 1 },
-      images: [
-        "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=100&h=100&fit=crop",
-      ],
-      tags: ["Color", "Fabric", "Fit"],
-    },
-  ];
+  // filterTags and filteredReviews look good as is but use real reviews state
 
   // Filter tags for review filtering
   const filterTags = [
@@ -462,26 +480,23 @@ export default function ProductDetail() {
     return result;
   }, [selectedRating, selectedTag, searchQuery, mediaFilter, sortBy]);
 
-  const ratingBreakdown = {
-    5: 3072,
-    4: 127,
-    3: 12,
-    2: 116,
-    1: 11,
-  };
+  const ratingBreakdown = useMemo(() => {
+    const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    reviews.forEach(r => {
+      if (counts[r.rating] !== undefined) counts[r.rating]++;
+    });
+    return counts;
+  }, [reviews]);
 
-  const totalReviews = Object.values(ratingBreakdown).reduce(
-    (a, b) => a + b,
-    0
-  );
+  const totalReviews = reviews.length;
 
   // Calculate average rating
-  const averageRating = (
+  const averageRating = totalReviews > 0 ? (
     Object.entries(ratingBreakdown).reduce(
       (sum, [star, count]) => sum + parseInt(star) * count,
       0
     ) / totalReviews
-  ).toFixed(1);
+  ).toFixed(1) : "0.0";
 
   const renderStars = (rating, size = "text-sm") => {
     const stars = [];
@@ -498,6 +513,14 @@ export default function ProductDetail() {
     }
     return stars;
   };
+
+  if (!product) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 uppercase tracking-widest text-gray-400">
+        {allProducts.length === 0 ? "Loading products..." : "Product not found"}
+      </div>
+    );
+  }
 
   return (
     <div ref={pageRef} className="min-h-screen bg-gray-50 overflow-x-hidden">
@@ -526,11 +549,11 @@ export default function ProductDetail() {
           </Link>
           <span className="text-gray-400">/</span>
           <Link to="/collection" className="text-gray-500 hover:text-gray-700">
-            Men's Shirts
+            {product.category}
           </Link>
           <span className="text-gray-400">/</span>
           <span className="text-blue-600 font-medium">
-            Blue to neutrals jacket
+            {product.name}
           </span>
         </div>
       </div>
@@ -594,18 +617,27 @@ export default function ProductDetail() {
                 Color: <span className="text-blue-600">{selectedColor}</span>
               </p>
               <div className="flex gap-3">
-                {product.colors.map((color) => (
-                  <button
-                    key={color.name}
-                    onClick={() => setSelectedColor(color.name)}
-                    className={`color-btn w-10 h-10 rounded-full border-2 transition-all ${selectedColor === color.name
-                      ? "border-blue-600 ring-2 ring-blue-200"
-                      : "border-gray-300"
-                      }`}
-                    style={{ backgroundColor: color.value }}
-                    title={color.name}
-                  />
-                ))}
+                {product.colors.map((color) => {
+                  const available = isColorAvailable(color.name);
+                  return (
+                    <button
+                      key={color.name}
+                      onClick={() => available && handleColorSelect(color.name)}
+                      className={`color-btn w-10 h-10 rounded-full border-2 transition-all relative ${selectedColor === color.name
+                        ? "border-blue-600 ring-2 ring-blue-200"
+                        : "border-gray-300"
+                        } ${!available ? "opacity-30 cursor-not-allowed grayscale" : "hover:scale-110"}`}
+                      style={{ backgroundColor: color.value }}
+                      title={available ? color.name : `${color.name} (Sold Out)`}
+                    >
+                      {!available && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="w-[120%] h-[1.5px] bg-red-400/80 rotate-45 transform" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -620,18 +652,31 @@ export default function ProductDetail() {
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {product.sizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`size-btn px-3 md:px-4 py-2 text-sm border rounded-md transition-colors ${selectedSize === size
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "border-gray-300 text-gray-700 hover:border-gray-400"
-                      }`}
-                  >
-                    {size}
-                  </button>
-                ))}
+                {product.sizes.map((size) => {
+                  const available = isSizeAvailable(size);
+                  return (
+                    <button
+                      key={size}
+                      onClick={() => available && handleSizeSelect(size)}
+                      className={`size-btn px-3 md:px-4 py-2 text-sm border rounded-md transition-all relative overflow-hidden ${selectedSize === size
+                        ? "bg-blue-600 text-white border-blue-600 shadow-md"
+                        : available
+                          ? "border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600"
+                          : "border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50"
+                        }`}
+                      disabled={!available && selectedSize === size}
+                    >
+                      <span className={!available ? "opacity-50" : ""}>{size}</span>
+                      {!available && (
+                        <div className="absolute inset-0 pointer-events-none">
+                          <svg className="w-full h-full opacity-20">
+                            <line x1="0" y1="100%" x2="100%" y2="0" stroke="currentColor" strokeWidth="1" />
+                          </svg>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -831,13 +876,18 @@ export default function ProductDetail() {
 
           <div className="py-6">
             {activeTab === "description" && (
-              <div>
-                <ul className="list-disc list-inside space-y-2 text-gray-600 mb-4">
-                  {product.features.map((feature, index) => (
-                    <li key={index}>{feature}</li>
+              <div className="space-y-4 animate-in fade-in duration-500">
+                <p className="text-gray-600 leading-relaxed text-sm md:text-base">
+                  {product.description}
+                </p>
+                <ul className="space-y-2">
+                  {product.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-center gap-3 text-gray-600 text-sm md:text-base">
+                      <span className="w-1.5 h-1.5 bg-blue-600 rounded-full flex-shrink-0" />
+                      {feature}
+                    </li>
                   ))}
                 </ul>
-                <p className="text-gray-600">{product.description}</p>
               </div>
             )}
             {activeTab === "sizing" && (
@@ -914,7 +964,10 @@ export default function ProductDetail() {
                 </div>
               </div>
 
-              <button className="w-full mt-4 lg:mt-6 bg-white border border-blue-600 text-blue-600 py-2.5 lg:py-3 rounded-lg font-medium hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 text-sm lg:text-base">
+              <button
+                onClick={() => setShowReviewForm(!showReviewForm)}
+                className="w-full mt-4 lg:mt-6 bg-white border border-blue-600 text-blue-600 py-2.5 lg:py-3 rounded-lg font-medium hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 text-sm lg:text-base"
+              >
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -928,12 +981,71 @@ export default function ProductDetail() {
                     d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                   />
                 </svg>
-                Write a review
+                {showReviewForm ? "Cancel Review" : "Write a review"}
               </button>
             </div>
 
             {/* Reviews List */}
             <div className="lg:col-span-3">
+              {/* Review Form */}
+              {showReviewForm && (
+                <div className="mb-8 bg-gray-50/50 p-6 rounded-2xl border border-gray-100 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+                  <h3 className="text-lg font-bold mb-4">Share your experience</h3>
+                  {!isSignedIn ? (
+                    <div className="text-center py-6">
+                      <p className="text-gray-600 mb-4">Please sign in to leave a review</p>
+                      <Link to="/sign-in" className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">Sign In</Link>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleReviewSubmit} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+                        <div className="flex gap-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setNewReview({ ...newReview, rating: star })}
+                              className={`text-2xl transition-transform hover:scale-110 ${star <= newReview.rating ? "text-yellow-400" : "text-gray-300"}`}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Review Title</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="What's the most important to know?"
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-600"
+                          value={newReview.title}
+                          onChange={(e) => setNewReview({ ...newReview, title: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Your Review</label>
+                        <textarea
+                          required
+                          rows={4}
+                          placeholder="What did you like or dislike? How was the fit?"
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-600"
+                          value={newReview.content}
+                          onChange={(e) => setNewReview({ ...newReview, content: e.target.value })}
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={submittingReview}
+                        className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-all disabled:opacity-50"
+                      >
+                        {submittingReview ? "Submitting..." : "Submit Review"}
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
               {/* Search & Filters */}
               <div className="space-y-3 mb-6">
                 {/* Search Bar */}
@@ -1032,7 +1144,12 @@ export default function ProductDetail() {
               </div>
 
               {/* Individual Reviews */}
-              <div className="space-y-4 sm:space-y-6">
+              <div className="space-y-4 sm:space-y-6 min-h-[200px] relative">
+                {reviewsLoading && (
+                  <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  </div>
+                )}
                 {filteredReviews.length > 0 ? (
                   filteredReviews.map((review) => (
                     <div

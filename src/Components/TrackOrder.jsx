@@ -323,14 +323,14 @@ export default function TrackOrder() {
                                                                     <span className={`mt-3 text-xs font-bold uppercase tracking-wide ${isActive ? "text-blue-600" : "text-gray-400"}`}>
                                                                         {step.label}
                                                                     </span>
-                                                                    {isActive && order.statusHistory && (() => {
-                                                                        const stepStatus = step.key;
-                                                                        // The DB might store statuses like 'Order Placed', 'Processing', 'Delivered'
-                                                                        // Let's just do a loose include match 
-                                                                        const h = order.statusHistory.find(x =>
-                                                                            x.status.toLowerCase().includes(stepStatus.toLowerCase()) ||
-                                                                            stepStatus.toLowerCase().includes(x.status.toLowerCase())
-                                                                        );
+                                                                    {isActive && (() => {
+                                                                        const h = order.statusHistory?.slice().reverse().find(x => {
+                                                                            const s = x.status.toLowerCase();
+                                                                            if (step.key === 'pending') return s.includes('pending') || s.includes('placed');
+                                                                            if (step.key === 'confirmed') return s.includes('confirm') || s.includes('processing') || s.includes('shipped');
+                                                                            if (step.key === 'delivered') return s.includes('deliver');
+                                                                            return false;
+                                                                        });
 
                                                                         if (h) {
                                                                             return (
@@ -343,17 +343,33 @@ export default function TrackOrder() {
                                                                         }
 
                                                                         // Fallbacks if history is missing but status is active
-                                                                        if (step.key === 'pending') {
+                                                                        if (step.key === 'delivered' && order.deliveredAt) {
                                                                             return (
                                                                                 <span className="text-[10px] text-gray-500 mt-1">
-                                                                                    {new Date(order.date).toLocaleString("en-US", {
+                                                                                    {new Date(order.deliveredAt).toLocaleString("en-US", {
                                                                                         month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
                                                                                     })}
                                                                                 </span>
                                                                             );
                                                                         }
 
-                                                                        return null;
+                                                                        if (step.key === 'confirmed' && order.confirmedAt) {
+                                                                            return (
+                                                                                <span className="text-[10px] text-gray-500 mt-1">
+                                                                                    {new Date(order.confirmedAt).toLocaleString("en-US", {
+                                                                                        month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
+                                                                                    })}
+                                                                                </span>
+                                                                            );
+                                                                        }
+
+                                                                        return (
+                                                                            <span className="text-[10px] text-gray-500 mt-1">
+                                                                                {new Date(order.date).toLocaleString("en-US", {
+                                                                                    month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
+                                                                                })}
+                                                                            </span>
+                                                                        );
                                                                     })()}
                                                                 </div>
                                                             );
@@ -424,12 +440,14 @@ export default function TrackOrder() {
                                                         {cancellingId === order.id ? 'Cancelling...' : 'Cancel Order'}
                                                     </button>
                                                 )}
-                                                <button
-                                                    onClick={(e) => handlePreviewInvoice(e, order)}
-                                                    className="flex-1 md:flex-none py-2.5 px-5 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
-                                                >
-                                                    Download Invoice
-                                                </button>
+                                                {order.status === 'delivered' && (
+                                                    <button
+                                                        onClick={(e) => handlePreviewInvoice(e, order)}
+                                                        className="flex-1 md:flex-none py-2.5 px-5 rounded-xl bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                                                    >
+                                                        Download Invoice
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
 
@@ -444,142 +462,134 @@ export default function TrackOrder() {
 
             {/* Invoice Preview Modal */}
             {previewInvoiceOrder && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 sm:p-6 overflow-y-auto">
-                    <div className="bg-white rounded-2xl w-full max-w-[600px] shadow-2xl overflow-hidden my-auto flex flex-col max-h-full max-h-[90vh]">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto pt-10 pb-10">
+                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl w-full max-w-sm shadow-2xl relative my-auto shrink-0 flex flex-col">
 
-                        {/* Modal Header */}
-                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
-                            <h3 className="text-lg font-bold text-gray-900">Invoice Preview</h3>
+                        {/* Close button outside the strict receipt bounds but inside the modal box */}
+                        <div className="absolute right-3 top-3 z-10">
                             <button
                                 onClick={() => setPreviewInvoiceOrder(null)}
-                                className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors hover:bg-gray-100"
+                                className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors shadow-sm"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
 
-                        {/* Modal Body */}
-                        <div className="overflow-y-auto grow custom-scrollbar">
-                            {/* The actual content that html2canvas generates from */}
-                            <div id={`invoice-content-${previewInvoiceOrder.id}`} className="p-6 sm:p-10 font-sans text-black bg-white w-full">
-                                <div className="flex justify-between items-start mb-8 border-b-2 border-gray-100 pb-6">
-                                    <div className="flex flex-col gap-3">
-                                        <div>
-                                            <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase">Invoice</h1>
-                                            <p className="text-sm text-gray-500 font-semibold mt-0.5">#{previewInvoiceOrder.orderNumber}</p>
-                                        </div>
-                                        <div className="p-1.5 bg-white border border-gray-200 rounded-lg shadow-sm inline-block">
-                                            <QRCode value={previewInvoiceOrder.orderNumber} size={64} level="M" />
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="flex items-center justify-end gap-2 mb-2">
-                                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm shadow-blue-600/30">M</div>
-                                            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Mystore</h2>
-                                        </div>
-                                        <p className="text-sm text-gray-500 font-medium">123 Fashion Street, NY 10001</p>
-                                        <p className="text-sm text-gray-500 font-medium">support@mystore.com</p>
-                                    </div>
+                        {/* Scrollable Receipt Area */}
+                        <div className="overflow-y-auto custom-scrollbar p-6 pb-0">
+                            <div id={`invoice-content-${previewInvoiceOrder.id}`} className="font-mono text-[11px] text-gray-800 bg-white w-full mx-auto relative overflow-hidden" style={{ minHeight: '400px' }}>
+
+                                {/* Header / Store Info */}
+                                <div className="flex flex-col items-center justify-center pt-4 pb-6 text-center">
+                                    <img src="/newLogo.png" className="w-24 h-auto object-contain mx-auto" alt="Mystore Logo" />
+                                    <p className="mt-2 text-gray-500 font-sans text-[10px] tracking-widest uppercase">Fashion Apparel</p>
                                 </div>
 
-                                <div className="flex justify-between mb-8 text-sm">
+                                {/* Meta section: Receipt ID & Date */}
+                                <div className="flex justify-between items-end border-b-2 border-dashed border-gray-200 pb-3 mb-4 text-[10px]">
                                     <div>
-                                        <h3 className="font-bold text-gray-400 uppercase tracking-widest text-[10px] mb-2">Billed To</h3>
-                                        <div className="text-gray-800 space-y-0.5 font-medium">
-                                            <p className="text-base font-bold text-gray-900">{previewInvoiceOrder.shippingInfo?.firstName} {previewInvoiceOrder.shippingInfo?.lastName}</p>
-                                            <p>{previewInvoiceOrder.shippingInfo?.address}</p>
-                                            <p>{previewInvoiceOrder.shippingInfo?.city}</p>
-                                            <p className="flex items-center gap-1.5 mt-1 text-gray-600">
-                                                <span className="font-semibold text-gray-400">Tel:</span> {previewInvoiceOrder.shippingInfo?.phoneNumber}
-                                            </p>
-                                        </div>
+                                        <p className="font-bold text-gray-400 mb-1">RECEIPT ID</p>
+                                        <p className="font-bold">{previewInvoiceOrder.orderNumber}</p>
                                     </div>
                                     <div className="text-right">
-                                        <div className="space-y-1.5">
-                                            <div className="flex justify-end gap-3"><span className="font-semibold text-gray-500">Issue Date</span> <span className="font-bold text-gray-900">{new Date(previewInvoiceOrder.date).toLocaleDateString()}</span></div>
-                                            <div className="flex justify-end gap-3"><span className="font-semibold text-gray-500">Payment</span> <span className="font-bold text-gray-900 capitalize">{previewInvoiceOrder.paymentMethod === 'cod' ? 'Cash on Delivery' : previewInvoiceOrder.paymentMethod}</span></div>
-                                            <div className="flex justify-end gap-3"><span className="font-semibold text-gray-500">Status</span> <span className={`font-bold capitalize ${previewInvoiceOrder.status === 'delivered' ? 'text-green-600' : 'text-blue-600'}`}>{previewInvoiceOrder.status}</span></div>
-                                        </div>
+                                        <p className="font-bold">
+                                            {new Date(previewInvoiceOrder.date).toLocaleDateString()} &bull; {new Date(previewInvoiceOrder.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </p>
                                     </div>
                                 </div>
 
-                                <div className="bg-gray-50/50 rounded-xl border border-gray-100 p-1 mb-8">
-                                    <table className="w-full text-left border-collapse text-sm">
-                                        <thead>
-                                            <tr className="border-b border-gray-100">
-                                                <th className="py-3 px-4 font-bold text-gray-500 uppercase text-[10px] tracking-widest rounded-tl-lg">Item Summary</th>
-                                                <th className="py-3 px-4 font-bold text-gray-500 uppercase text-[10px] tracking-widest text-center">Qty</th>
-                                                <th className="py-3 px-4 font-bold text-gray-500 uppercase text-[10px] tracking-widest text-right">Price</th>
-                                                <th className="py-3 px-4 font-bold text-gray-500 uppercase text-[10px] tracking-widest text-right rounded-tr-lg">Total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {previewInvoiceOrder.items.map((item, idx) => (
-                                                <tr key={idx} className={idx !== previewInvoiceOrder.items.length - 1 ? "border-b border-gray-100" : ""}>
-                                                    <td className="py-3 px-4 w-1/2">
-                                                        <p className="font-bold text-gray-900 truncate">{item.name}</p>
-                                                        <p className="text-xs text-gray-500 mt-0.5 font-medium">{item.color} / {item.size}</p>
-                                                    </td>
-                                                    <td className="py-3 px-4 text-gray-700 text-center font-bold w-1/6">{item.quantity}</td>
-                                                    <td className="py-3 px-4 text-gray-700 text-right font-medium text-sm">${item.price.toFixed(2)}</td>
-                                                    <td className="py-3 px-4 text-gray-900 font-black text-right w-1/6">${item.subtotal.toFixed(2)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                {/* Items Table Header */}
+                                <div className="flex justify-between font-bold text-gray-400 mb-2 mt-4 text-[10px]">
+                                    <span className="uppercase tracking-widest">Description</span>
+                                    <span className="uppercase tracking-widest text-right">Amount</span>
                                 </div>
 
-                                <div className="flex justify-end pb-4">
-                                    <div className="w-64 space-y-2 text-sm">
-                                        <div className="flex justify-between text-gray-500 font-medium px-4">
-                                            <span>Subtotal</span>
-                                            <span className="text-gray-900">${previewInvoiceOrder.subtotal?.toFixed(2) || '0.00'}</span>
+                                {/* Items List */}
+                                <div className="space-y-3 border-b-2 border-dashed border-gray-200 pb-4 mb-4">
+                                    {previewInvoiceOrder.items.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between items-start">
+                                            <div className="flex-1 pr-4">
+                                                <p className="font-bold text-gray-900 leading-tight">
+                                                    {item.name} <span className="text-[#00b86b] font-black text-xs">x{item.quantity}</span>
+                                                </p>
+                                                <p className="text-gray-500 text-[10px] mt-0.5">{item.color} / {item.size}</p>
+                                            </div>
+                                            <div className="text-right font-bold text-gray-800 mt-[1px]">
+                                                {item.subtotal.toFixed(2)} DH
+                                            </div>
                                         </div>
-                                        <div className="flex justify-between text-gray-500 font-medium px-4">
-                                            <span>Shipping</span>
-                                            <span className="text-gray-900">${previewInvoiceOrder.shippingCost?.toFixed(2) || '0.00'}</span>
-                                        </div>
-                                        <div className="flex justify-between border-t border-gray-200 mt-3 pt-3 px-4 text-lg font-black text-gray-900">
-                                            <span>Total</span>
-                                            <span className="text-blue-600">${previewInvoiceOrder.total?.toFixed(2) || '0.00'}</span>
-                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Totals */}
+                                <div className="space-y-2 mb-4 border-b-2 border-dashed border-gray-200 pb-4">
+                                    <div className="flex justify-between text-gray-500 font-semibold">
+                                        <span>Subtotal</span>
+                                        <span className="text-gray-800">{previewInvoiceOrder.subtotal?.toFixed(2) || '0.00'} DH</span>
+                                    </div>
+                                    <div className="flex justify-between text-gray-500 font-semibold">
+                                        <span>Shipping</span>
+                                        <span className="text-gray-800">{previewInvoiceOrder.shippingCost?.toFixed(2) || '0.00'} DH</span>
+                                    </div>
+                                    <div className="flex justify-between text-gray-500 font-semibold mt-1">
+                                        <span>Tax (0%)</span>
+                                        <span className="text-gray-800">0.00 DH</span>
                                     </div>
                                 </div>
 
-                                <div className="mt-12 pt-6 border-t-2 border-gray-100 border-dashed text-center text-xs text-gray-500">
-                                    <p className="font-bold text-gray-900 text-sm mb-1">Thank you for shopping with Mystore!</p>
-                                    <p className="font-medium">If you have any questions, please contact our support team.</p>
+                                {/* Grand Total */}
+                                <div className="flex justify-between items-end mb-8 pt-1">
+                                    <span className="font-bold tracking-widest text-[12px] uppercase">Total Amount</span>
+                                    <span className="text-xl font-black text-[#00b86b] tracking-tight">{previewInvoiceOrder.total?.toFixed(2) || '0.00'} DH</span>
+                                </div>
+
+                                {/* QR Code & Message */}
+                                <div className="mb-6 pt-6 border-t border-gray-100 flex flex-col items-center justify-center bg-green-50/50 rounded-xl border-dashed border-[#00b86b]/20 p-4">
+                                    <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100 mb-3">
+                                        <QRCode value={previewInvoiceOrder.orderNumber} size={90} level="M" />
+                                    </div>
+                                    <p className="text-[9px] font-bold text-[#00b86b] tracking-wider uppercase text-center">Scan For Order Details</p>
+                                </div>
+
+                                <div className="text-center font-bold tracking-widest text-[10px] text-gray-900 mb-8 uppercase">
+                                    Thank you for shopping with us!
+                                </div>
+
+                                {/* The sawtooth bottom edge for the receipt visual */}
+                                <div className="absolute bottom-0 left-0 right-0 h-4 w-full flex space-x-0 bg-white">
+                                    {/* Using CSS background repeating radial gradient or SVG pattern for sawtooth */}
+                                    <div className="w-full h-full bg-[radial-gradient(circle_at_bottom,transparent_4px,white_4px)] bg-[size:10px_10px] bg-repeat-x scale-y-[-1] absolute bottom-[-4px]"></div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Modal Footer */}
-                        <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3 shrink-0">
+                        {/* Modal Footer / Actions - Keeping out of print area */}
+                        <div className="p-4 bg-gray-50/80 backdrop-blur border-t border-gray-200 mt-0 flex justify-end gap-2 shrink-0 rounded-b-2xl">
                             <button
                                 onClick={() => setPreviewInvoiceOrder(null)}
-                                className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                                className="px-5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={() => generateInvoice(previewInvoiceOrder)}
                                 disabled={generatingInvoiceId === previewInvoiceOrder.id}
-                                className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20 disabled:opacity-50 flex items-center gap-2"
+                                className="px-5 py-2 text-sm font-bold text-white bg-[#374f41] rounded shadow hover:bg-[#2b3e33] transition-colors disabled:opacity-50 flex items-center justify-center decoration-0 gap-2 min-w-[140px]"
                             >
                                 {generatingInvoiceId === previewInvoiceOrder.id ? (
                                     <>
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                        <svg className="animate-spin -ml-1 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        Processing PDF...
+                                        PROCESSING...
                                     </>
                                 ) : (
                                     <>
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                         </svg>
-                                        Download PDF
+                                        DOWNLOAD PDF
                                     </>
                                 )}
                             </button>

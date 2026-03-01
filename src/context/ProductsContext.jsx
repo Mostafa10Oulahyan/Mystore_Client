@@ -60,13 +60,43 @@ export function ProductsProvider({ children }) {
 
             if (fetchError) throw fetchError;
 
+            // Fetch ratings separately to avoid complex joins if not supported
+            const { data: allReviews, error: reviewsError } = await supabase
+                .from("reviews")
+                .select("product_id, rating");
+
+            const ratingsMap = {};
+            if (!reviewsError && allReviews) {
+                allReviews.forEach(r => {
+                    if (!ratingsMap[r.product_id]) {
+                        ratingsMap[r.product_id] = { total: 0, count: 0 };
+                    }
+                    ratingsMap[r.product_id].total += r.rating;
+                    ratingsMap[r.product_id].count++;
+                });
+            }
+
             const flattened = products.map((p) => {
-                const primaryImg =
-                    p.product_images?.find((img) => img.is_primary) ||
-                    p.product_images?.sort((a, b) => a.display_order - b.display_order)[0];
                 const availableVariants = (p.product_variants || []).filter((v) => v.is_available);
-                const prodColors = [...new Set(availableVariants.map((v) => v.color))];
+                const colorMap = {};
+                availableVariants.forEach(v => {
+                    if (v.color) {
+                        colorMap[v.color] = v.color_hex || colorMap[v.color] || COLOR_HEX_MAP[v.color] || COLOR_HEX_MAP[v.color.charAt(0).toUpperCase() + v.color.slice(1).toLowerCase()] || "#808080";
+                    }
+                });
+                const prodColors = Object.keys(colorMap);
                 const prodSizes = [...new Set(availableVariants.map((v) => v.size))];
+
+                const ratingData = ratingsMap[p.id] || { total: 0, count: 0 };
+                const avgRating = ratingData.count > 0 ? (ratingData.total / ratingData.count) : 0;
+
+                // Sort and map all images
+                const allImages = (p.product_images || [])
+                    .sort((a, b) => a.display_order - b.display_order)
+                    .map(img => img.image_url)
+                    .filter(Boolean); // Remove any null/empty URLs
+
+                // console.log(`Product ${p.name} has ${allImages.length} images`);
 
                 return {
                     id: p.id,
@@ -75,9 +105,10 @@ export function ProductsProvider({ children }) {
                     description: p.description,
                     price: parseFloat(p.base_price),
                     compareAtPrice: p.compare_at_price ? parseFloat(p.compare_at_price) : null,
-                    rating: 0,
-                    reviews: 0,
-                    image: primaryImg?.image_url || "/placeholder.jpg",
+                    rating: avgRating,
+                    reviews: ratingData.count,
+                    image: allImages[0] || "/placeholder.jpg",
+                    images: allImages,
                     category: p.categories?.name || "Uncategorized",
                     productType: p.product_types?.name || "Other",
                     color: prodColors[0] || "Black",
@@ -85,6 +116,7 @@ export function ProductsProvider({ children }) {
                     sizes: prodSizes,
                     featured: p.featured,
                     createdAt: p.created_at,
+                    variants: availableVariants,
                 };
             });
 
@@ -94,10 +126,23 @@ export function ProductsProvider({ children }) {
             // Derive filter options
             setCategories([...new Set(flattened.map((p) => p.category))]);
             setProductTypes([...new Set(flattened.map((p) => p.productType))]);
+
+            // Collect all unique colors from all products with their hex values
+            const allColorsMap = {};
+            products.forEach(p => {
+                (p.product_variants || []).forEach(v => {
+                    if (v.color) {
+                        const name = v.color;
+                        const hex = v.color_hex || COLOR_HEX_MAP[name] || COLOR_HEX_MAP[name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()] || "#808080";
+                        allColorsMap[name] = hex;
+                    }
+                });
+            });
+
             setColors(
-                [...new Set(flattened.flatMap((p) => p.colors || [p.color]))].map((name) => ({
+                Object.entries(allColorsMap).map(([name, value]) => ({
                     name,
-                    value: COLOR_HEX_MAP[name] || "#808080",
+                    value,
                 }))
             );
             setSizes([...new Set(flattened.flatMap((p) => p.sizes || []))]);

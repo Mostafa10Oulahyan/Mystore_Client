@@ -32,7 +32,7 @@ export function OrdersProvider({ children }) {
                 .select(`
           id, order_number, status, subtotal, shipping_cost,
           total_amount, payment_method, customer_phone, notes,
-          estimated_delivery_date, delivered_at, created_at,
+          estimated_delivery_date, delivered_at, confirmed_at, created_at,
           delivery_address_id,
           order_items (
             id, product_name, product_image_url, color, size,
@@ -64,12 +64,14 @@ export function OrdersProvider({ children }) {
                 notes: order.notes,
                 estimatedDelivery: order.estimated_delivery_date,
                 deliveredAt: order.delivered_at,
+                confirmedAt: order.confirmed_at,
                 date: order.created_at,
                 shippingInfo: {
                     firstName: order.customer_first_name || "",
                     lastName: order.customer_last_name || "",
                     address: order.customer_address || "",
                     city: order.customer_city || "",
+                    email: order.customer_email || "",
                     phoneNumber: order.customer_phone || "",
                 },
                 items: (order.order_items || []).map((item) => ({
