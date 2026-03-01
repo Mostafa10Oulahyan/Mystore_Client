@@ -13,7 +13,6 @@ export default function Favourite() {
   const { colors: colorOptions } = useProducts();
   const [selectedSizes, setSelectedSizes] = useState({});
 
-  const sizes = ["XS", "S", "M", "L", "XL", "XXL"];
 
   const handleSizeSelect = (productId, size) => {
     setSelectedSizes((prev) => ({
@@ -121,15 +120,19 @@ export default function Favourite() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     {/* Color indicators */}
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-                      <div
-                        className="w-5 h-5 rounded-full border-2 border-white shadow-md"
-                        style={{
-                          backgroundColor:
-                            colorOptions.find((c) => c.name === product.color)
-                              ?.value || "#3B82F6",
-                        }}
-                      ></div>
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1.5 bg-white/80 px-2 py-1 rounded-full backdrop-blur-sm">
+                      {product.colors?.map((colorName, idx) => (
+                        <div
+                          key={idx}
+                          className="w-3.5 h-3.5 rounded-full border border-gray-200 shadow-sm"
+                          style={{
+                            backgroundColor:
+                              colorOptions.find((c) => c.name === colorName)
+                                ?.value || "#ccc",
+                          }}
+                          title={colorName}
+                        />
+                      ))}
                     </div>
                   </div>
                 </Link>
@@ -151,19 +154,19 @@ export default function Favourite() {
                       </span>
                     </div>
                     <p className="text-lg font-bold text-gray-900">
-                      ${product.price.toFixed(2)}
+                      {product.price.toFixed(2)} MAD
                     </p>
                   </div>
 
                   {/* Size Selection */}
                   <div className="flex gap-1 flex-wrap">
-                    {sizes.map((size) => (
+                    {product.sizes?.map((size) => (
                       <button
                         key={size}
                         onClick={() => handleSizeSelect(product.id, size)}
                         className={`px-2 py-1 text-xs rounded border transition-colors ${selectedSizes[product.id] === size
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"
                           }`}
                       >
                         {size}

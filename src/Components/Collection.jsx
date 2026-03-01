@@ -30,7 +30,7 @@ const ChevronIcon = ({ isOpen }) => (
 export default function Collection() {
   const { user } = useUser();
   const userId = user?.id;
-  const { filteredProducts, filters, categories, productTypes, colors, sizes, setFilter: setFilterCtx, clearFilters: clearFiltersCtx, applySort: applySortCtx } =
+  const { filteredProducts, filters, categories, productTypes, colors, sizes, maxPrice, error, setFilter: setFilterCtx, clearFilters: clearFiltersCtx, applySort: applySortCtx } =
     useProducts();
   const { items: favourites, toggleFavourite } = useFavourites();
 
@@ -204,7 +204,7 @@ export default function Collection() {
     <div className="min-h-screen bg-gray-50 overflow-hidden">
       {/* Top Bar */}
       <div className="bg-blue-600 text-white text-center py-2 text-sm">
-        <span>Free Shipping on Orders over $140!</span>
+        <span>Free Shipping on Orders over 140 MAD!</span>
       </div>
 
       {/* Breadcrumb */}
@@ -233,6 +233,7 @@ export default function Collection() {
       <div className="max-w-7xl mx-auto px-4 pb-12">
         {/* Header */}
         <div ref={headerRef} className="mb-6">
+          {error && <div className="p-4 mb-4 bg-red-100 text-red-600 rounded">Error: {error}</div>}
           <div className="flex justify-between items-center mb-4">
             <div>
               <h1 className="text-xl md:text-2xl font-bold">
@@ -325,8 +326,8 @@ export default function Collection() {
               <button
                 onClick={() => setViewMode("grid3")}
                 className={`p-2 rounded ${viewMode === "grid3"
-                    ? "bg-blue-100 border border-blue-600"
-                    : "hover:bg-gray-100"
+                  ? "bg-blue-100 border border-blue-600"
+                  : "hover:bg-gray-100"
                   }`}
               >
                 <div className="grid grid-cols-3 gap-0.5">
@@ -467,7 +468,7 @@ export default function Collection() {
                   <input
                     type="range"
                     min="0"
-                    max="500"
+                    max={maxPrice}
                     value={filters.priceRange[1]}
                     onChange={(e) =>
                       handleFilterChange("priceRange", [
@@ -500,7 +501,7 @@ export default function Collection() {
                         onChange={(e) =>
                           handleFilterChange("priceRange", [
                             filters.priceRange[0],
-                            parseInt(e.target.value) || 500,
+                            parseInt(e.target.value) || maxPrice,
                           ])
                         }
                         className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
@@ -508,7 +509,7 @@ export default function Collection() {
                     </div>
                   </div>
                   <div className="text-sm text-gray-600 text-center">
-                    ${filters.priceRange[0]} - ${filters.priceRange[1]}
+                    {filters.priceRange[0]} MAD - {filters.priceRange[1]} MAD
                   </div>
                 </div>
               )}
@@ -632,8 +633,8 @@ export default function Collection() {
                       key={color.name}
                       onClick={() => handleFilterChange("colors", color.name)}
                       className={`w-8 h-8 rounded-full border-2 transition-all ${filters.colors.includes(color.name)
-                          ? "border-blue-600 ring-2 ring-blue-200"
-                          : "border-gray-300 hover:border-gray-400"
+                        ? "border-blue-600 ring-2 ring-blue-200"
+                        : "border-gray-300 hover:border-gray-400"
                         }`}
                       style={{ backgroundColor: color.value }}
                       title={color.name}
@@ -659,8 +660,8 @@ export default function Collection() {
                       key={size}
                       onClick={() => handleFilterChange("sizes", size)}
                       className={`px-3 py-1.5 text-sm border rounded-md transition-colors ${filters.sizes.includes(size)
-                          ? "bg-blue-600 text-white border-blue-600"
-                          : "border-gray-300 text-gray-700 hover:border-gray-400"
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "border-gray-300 text-gray-700 hover:border-gray-400"
                         }`}
                     >
                       {size}
@@ -799,7 +800,7 @@ export default function Collection() {
                         <input
                           type="range"
                           min="0"
-                          max="500"
+                          max={maxPrice}
                           value={filters.priceRange[1]}
                           onChange={(e) =>
                             handleFilterChange("priceRange", [
@@ -832,7 +833,7 @@ export default function Collection() {
                               onChange={(e) =>
                                 handleFilterChange("priceRange", [
                                   filters.priceRange[0],
-                                  parseInt(e.target.value) || 500,
+                                  parseInt(e.target.value) || maxPrice,
                                 ])
                               }
                               className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
@@ -840,7 +841,7 @@ export default function Collection() {
                           </div>
                         </div>
                         <div className="text-sm text-gray-600 text-center">
-                          ${filters.priceRange[0]} - ${filters.priceRange[1]}
+                          {filters.priceRange[0]} MAD - {filters.priceRange[1]} MAD
                         </div>
                       </div>
                     )}
@@ -875,8 +876,8 @@ export default function Collection() {
                                 <span
                                   key={i}
                                   className={`text-sm ${i < rating
-                                      ? "text-yellow-400"
-                                      : "text-gray-300"
+                                    ? "text-yellow-400"
+                                    : "text-gray-300"
                                     }`}
                                 >
                                   ★
@@ -974,8 +975,8 @@ export default function Collection() {
                               handleFilterChange("colors", color.name)
                             }
                             className={`w-8 h-8 rounded-full border-2 transition-all ${filters.colors.includes(color.name)
-                                ? "border-blue-600 ring-2 ring-blue-200"
-                                : "border-gray-300 hover:border-gray-400"
+                              ? "border-blue-600 ring-2 ring-blue-200"
+                              : "border-gray-300 hover:border-gray-400"
                               }`}
                             style={{ backgroundColor: color.value }}
                             title={color.name}
@@ -1001,8 +1002,8 @@ export default function Collection() {
                             key={size}
                             onClick={() => handleFilterChange("sizes", size)}
                             className={`px-3 py-1.5 text-sm border rounded-md transition-colors ${filters.sizes.includes(size)
-                                ? "bg-blue-600 text-white border-blue-600"
-                                : "border-gray-300 text-gray-700 hover:border-gray-400"
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "border-gray-300 text-gray-700 hover:border-gray-400"
                               }`}
                           >
                             {size}
@@ -1060,12 +1061,12 @@ export default function Collection() {
               <>
                 <div
                   className={`grid gap-4 md:gap-6 ${viewMode === "grid2"
-                      ? "grid-cols-2"
-                      : viewMode === "grid3"
-                        ? "grid-cols-2 lg:grid-cols-3"
-                        : viewMode === "grid4"
-                          ? "grid-cols-2 lg:grid-cols-4"
-                          : "grid-cols-1"
+                    ? "grid-cols-2"
+                    : viewMode === "grid3"
+                      ? "grid-cols-2 lg:grid-cols-3"
+                      : viewMode === "grid4"
+                        ? "grid-cols-2 lg:grid-cols-4"
+                        : "grid-cols-1"
                     }`}
                 >
                   {currentProducts.map((product) => (
@@ -1091,8 +1092,8 @@ export default function Collection() {
                           toggleFavourite(product, userId);
                         }}
                         className={`absolute top-4 right-4 z-10 rounded-full p-2 shadow-md transition-all opacity-0 group-hover:opacity-100 ${favourites.some((fav) => fav.id === product.id)
-                            ? "bg-blue-500 text-white hover:bg-blue-600 opacity-100"
-                            : "bg-white text-gray-700 hover:bg-gray-100"
+                          ? "bg-blue-500 text-white hover:bg-blue-600 opacity-100"
+                          : "bg-white text-gray-700 hover:bg-gray-100"
                           }`}
                       >
                         <svg
@@ -1132,22 +1133,23 @@ export default function Collection() {
                           </span>
                         </div>
                         <p className="text-lg font-bold text-gray-900 mb-3">
-                          ${product.price.toFixed(2)}
+                          {product.price.toFixed(2)} MAD
                         </p>
 
-                        {/* Color indicator */}
-                        <div className="flex items-center gap-2 mb-2">
-                          <div
-                            className="w-4 h-4 rounded-full border border-gray-300"
-                            style={{
-                              backgroundColor:
-                                colors.find((c) => c.name === product.color)
-                                  ?.value || "#ccc",
-                            }}
-                          />
-                          <span className="text-xs text-gray-500">
-                            {product.color}
-                          </span>
+                        {/* Color indicators */}
+                        <div className="flex items-center gap-1.5 mb-2 mt-1">
+                          {product.colors.map((colorName, idx) => (
+                            <div
+                              key={idx}
+                              className="w-3.5 h-3.5 rounded-full border border-gray-200 shadow-sm"
+                              style={{
+                                backgroundColor:
+                                  colors.find((c) => c.name === colorName)
+                                    ?.value || (COLOR_HEX_MAP && COLOR_HEX_MAP[colorName]) || "#ccc",
+                              }}
+                              title={colorName}
+                            />
+                          ))}
                         </div>
 
                         {/* Size Options */}
@@ -1181,8 +1183,8 @@ export default function Collection() {
                         }
                         disabled={currentPage === 1}
                         className={`px-3 py-2 text-sm ${currentPage === 1
-                            ? "text-gray-300"
-                            : "text-gray-500 hover:text-gray-700"
+                          ? "text-gray-300"
+                          : "text-gray-500 hover:text-gray-700"
                           }`}
                       >
                         Previous
@@ -1194,8 +1196,8 @@ export default function Collection() {
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
                             className={`w-8 h-8 rounded text-sm font-medium ${currentPage === pageNum
-                                ? "bg-blue-600 text-white"
-                                : "hover:bg-gray-100"
+                              ? "bg-blue-600 text-white"
+                              : "hover:bg-gray-100"
                               }`}
                           >
                             {pageNum}
@@ -1208,8 +1210,8 @@ export default function Collection() {
                           <button
                             onClick={() => setCurrentPage(totalPages)}
                             className={`w-8 h-8 rounded text-sm ${currentPage === totalPages
-                                ? "bg-blue-600 text-white font-medium"
-                                : "hover:bg-gray-100"
+                              ? "bg-blue-600 text-white font-medium"
+                              : "hover:bg-gray-100"
                               }`}
                           >
                             {totalPages}
@@ -1224,8 +1226,8 @@ export default function Collection() {
                         }
                         disabled={currentPage === totalPages}
                         className={`px-3 py-2 text-sm ${currentPage === totalPages
-                            ? "text-gray-300"
-                            : "text-gray-700 hover:text-gray-900"
+                          ? "text-gray-300"
+                          : "text-gray-700 hover:text-gray-900"
                           }`}
                       >
                         Next
@@ -1324,7 +1326,7 @@ export default function Collection() {
             </div>
             <h4 className="font-bold mb-2">Free Shipping</h4>
             <p className="text-sm text-gray-600">
-              Free shipping on all US orders or orders above $100
+              Free shipping on all US orders or orders above 100 MAD
             </p>
           </div>
 

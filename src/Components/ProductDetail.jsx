@@ -36,10 +36,14 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("description");
   const [selectedRating, setSelectedRating] = useState(0); // 0 means all ratings
-  const [selectedTag, setSelectedTag] = useState("All Reviews");
   const [searchQuery, setSearchQuery] = useState("");
   const [mediaFilter, setMediaFilter] = useState("all"); // all, with-images, with-videos
   const [sortBy, setSortBy] = useState("recent");
+
+  // Edit Review State
+  const [editingReviewId, setEditingReviewId] = useState(null);
+  const [editReviewData, setEditReviewData] = useState({ rating: 5, title: "", content: "" });
+  const [submittingEdit, setSubmittingEdit] = useState(false);
 
   // Real dynamic reviews
   const [reviews, setReviews] = useState([]);
@@ -259,7 +263,7 @@ export default function ProductDetail() {
     try {
       let query = supabase
         .from("reviews")
-        .select("*")
+        .select("*, users(first_name, last_name, profile_image_url)")
         .eq("product_id", id);
 
       if (sortBy === "recent") {
@@ -274,18 +278,23 @@ export default function ProductDetail() {
       if (error) throw error;
 
       // Transform to match UI expectations
-      const transformed = (data || []).map(r => ({
-        id: r.id,
-        author: r.customer_name || "Anonymous",
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${r.customer_name || r.id}`,
-        rating: r.rating,
-        date: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-        title: r.title || "User Review",
-        content: r.content,
-        helpful: { yes: r.helpful_count || 0, no: 0 },
-        images: r.images || [],
-        tags: r.tags || []
-      }));
+      const transformed = (data || []).map(r => {
+        const fullName = r.users ? `${r.users.first_name} ${r.users.last_name}` : "Anonymous";
+        const avatarUrl = r.users?.profile_image_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName}`;
+
+        return {
+          id: r.id,
+          userId: r.user_id,
+          author: fullName,
+          avatar: avatarUrl,
+          rating: r.rating,
+          date: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          title: r.title || "User Review",
+          content: r.comment,
+          images: r.images || [],
+          tags: r.tags || []
+        };
+      });
 
       setReviews(transformed);
     } catch (err) {
@@ -301,39 +310,150 @@ export default function ProductDetail() {
     setSubmittingReview(true);
 
     try {
+      // Find a valid order_id for this user and product
+      const { data: orderItems, error: orderError } = await supabase
+        .from('order_items')
+        .select(`
+          order_id,
+          orders!inner(user_id, status)
+        `)
+        .eq('product_id', id)
+        .eq('orders.user_id', userId)
+        .eq('orders.status', 'delivered')
+        .limit(1);
+
+      if (orderError) throw orderError;
+
+      const orderId = orderItems?.[0]?.order_id;
+
+      if (!orderId) {
+        throw new Error("You can only review products you have purchased and received.");
+      }
+
       const { error } = await supabase
         .from("reviews")
         .insert([{
           product_id: id,
           user_id: userId,
-          customer_name: user.fullName || user.username || "Anonymous",
+          order_id: orderId,
           rating: newReview.rating,
           title: newReview.title,
-          content: newReview.content,
+          comment: newReview.content,
           created_at: new Date().toISOString()
         }]);
 
       if (error) throw error;
 
+      // Optimistically update the UI to show the new review instantly
+      const avatarUrl = user.imageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.fullName || "Anonymous"}`;
+      const newReviewItem = {
+        id: `temp-${Date.now()}`,
+        userId: userId,
+        author: user.fullName || user.username || "Anonymous",
+        avatar: avatarUrl,
+        rating: newReview.rating,
+        date: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        title: newReview.title || "User Review",
+        content: newReview.content,
+        images: [],
+        tags: []
+      };
+
+      setReviews(prev => [newReviewItem, ...prev]);
+
       setNewReview({ rating: 5, title: "", content: "" });
       setShowReviewForm(false);
+
+      // Still fetch in background to ensure DB sync
       fetchReviews();
+
       alert("Review submitted successfully!");
     } catch (err) {
       console.error("Error submitting review:", err);
-      alert("Failed to submit review: " + err.message);
+      // Check for Postgres unique violation
+      if (err.code === "23505" || (err.message && err.message.includes("unique constraint"))) {
+        alert("You have already submitted a review for this product from your past orders.");
+      } else {
+        alert("Failed to submit review: " + err.message);
+      }
     } finally {
       setSubmittingReview(false);
     }
   }
+
+  // Handle Review Deletion
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm("Are you sure you want to delete your review?")) return;
+
+    try {
+      // Optimistically update UI
+      setReviews(prev => prev.filter(r => r.id !== reviewId));
+
+      const { error } = await supabase
+        .from('reviews')
+        .delete()
+        .eq('id', reviewId)
+        .eq('user_id', userId);
+
+      if (error) {
+        throw error;
+      }
+    } catch (err) {
+      console.error("Error deleting review:", err);
+      alert("Failed to delete review. Please refresh and try again.");
+      fetchReviews(); // Revert UI on failure
+    }
+  }
+
+  // Handle Review Edit
+  const startEditReview = (review) => {
+    setEditingReviewId(review.id);
+    setEditReviewData({ rating: review.rating, title: review.title, content: review.content });
+  };
+
+  const cancelEditReview = () => {
+    setEditingReviewId(null);
+    setEditReviewData({ rating: 5, title: "", content: "" });
+  };
+
+  const handleEditReviewSubmit = async (e, reviewId) => {
+    e.preventDefault();
+    if (!isSignedIn) return;
+    setSubmittingEdit(true);
+
+    try {
+      // Optimistically update UI
+      setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, rating: editReviewData.rating, title: editReviewData.title, content: editReviewData.content } : r));
+      setEditingReviewId(null);
+
+      const { error } = await supabase
+        .from('reviews')
+        .update({
+          rating: editReviewData.rating,
+          title: editReviewData.title,
+          comment: editReviewData.content
+        })
+        .eq('id', reviewId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error("Error editing review:", err);
+      alert("Failed to edit review. Please refresh and try again.");
+      fetchReviews(); // Revert UI on failure
+    } finally {
+      setSubmittingEdit(false);
+    }
+  };
 
   // Build product data from Redux or use fallback
   const product = foundProduct
     ? {
       id: foundProduct.id,
       name: foundProduct.name,
+      description: foundProduct.description || "No description available",
       subtitle: `Premium ${foundProduct.category}'s ${foundProduct.productType} - High quality fashion item`,
-      price: `$${foundProduct.price.toFixed(2)}`,
+      price: `${foundProduct.price.toFixed(2)} MAD`,
       priceNum: foundProduct.price,
       rating: foundProduct.rating,
       reviews: foundReviewCount, // Use the real review count from the local state
@@ -345,11 +465,7 @@ export default function ProductDetail() {
         ? foundProduct.images
         : [foundProduct.image],
       estimatedDelivery: "Dec 28 2025 - Jan 02 2026",
-      features: [
-        "Premium quality materials",
-        `Category: ${foundProduct.category} - ${foundProduct.productType}`,
-        "Questions? Email us at support@fashionova.com",
-      ],
+
       category: foundProduct.category,
       productType: foundProduct.productType,
       // This line copies all color/size combinations (variants) from the database to this product object.
@@ -423,19 +539,6 @@ export default function ProductDetail() {
 
   // filterTags and filteredReviews look good as is but use real reviews state
 
-  // Filter tags for review filtering
-  const filterTags = [
-    "All Reviews",
-    "Fit",
-    "Color",
-    "Weight",
-    "Fabric",
-    "Shoulder",
-    "Material",
-    "Problem",
-    "Comfort",
-  ];
-
   // Filtered reviews using useMemo for performance
   const filteredReviews = useMemo(() => {
     let result = [...reviews];
@@ -443,11 +546,6 @@ export default function ProductDetail() {
     // Filter by star rating
     if (selectedRating > 0) {
       result = result.filter((review) => review.rating === selectedRating);
-    }
-
-    // Filter by tag
-    if (selectedTag !== "All Reviews") {
-      result = result.filter((review) => review.tags?.includes(selectedTag));
     }
 
     // Filter by search query
@@ -478,7 +576,7 @@ export default function ProductDetail() {
     }
 
     return result;
-  }, [selectedRating, selectedTag, searchQuery, mediaFilter, sortBy]);
+  }, [reviews, selectedRating, searchQuery, mediaFilter, sortBy]);
 
   const ratingBreakdown = useMemo(() => {
     const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
@@ -526,7 +624,7 @@ export default function ProductDetail() {
     <div ref={pageRef} className="min-h-screen bg-gray-50 overflow-x-hidden">
       {/* Top Bar */}
       <div className="top-bar bg-blue-600 text-white text-center py-2 text-sm px-4">
-        <span>Free Shipping on Orders over $140!</span>
+        <span>Free Shipping on Orders over 140 MAD!</span>
       </div>
 
       {/* Breadcrumb */}
@@ -853,24 +951,6 @@ export default function ProductDetail() {
               >
                 Description
               </button>
-              <button
-                onClick={() => setActiveTab("sizing")}
-                className={`pb-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "sizing"
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-              >
-                Sizing Guide
-              </button>
-              <button
-                onClick={() => setActiveTab("delivery")}
-                className={`pb-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "delivery"
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-              >
-                Delivery and Returns
-              </button>
             </div>
           </div>
 
@@ -880,24 +960,6 @@ export default function ProductDetail() {
                 <p className="text-gray-600 leading-relaxed text-sm md:text-base">
                   {product.description}
                 </p>
-                <ul className="space-y-2">
-                  {product.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-center gap-3 text-gray-600 text-sm md:text-base">
-                      <span className="w-1.5 h-1.5 bg-blue-600 rounded-full flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {activeTab === "sizing" && (
-              <div className="text-gray-600">
-                <p>Size guide information will be displayed here.</p>
-              </div>
-            )}
-            {activeTab === "delivery" && (
-              <div className="text-gray-600">
-                <p>Delivery and returns information will be displayed here.</p>
               </div>
             )}
           </div>
@@ -1104,36 +1166,18 @@ export default function ProductDetail() {
                 </div>
               </div>
 
-              {/* Filter Tags */}
-              <div className="flex gap-2 mb-6 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
-                {filterTags.map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => setSelectedTag(option)}
-                    className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-full transition-colors whitespace-nowrap flex-shrink-0 ${selectedTag === option
-                      ? "bg-blue-600 text-white"
-                      : "bg-white border border-gray-300 text-gray-700 hover:border-gray-400"
-                      }`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
 
               {/* Filter Status & Clear */}
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-gray-500">
                   Showing {filteredReviews.length} of {reviews.length} reviews
                   {selectedRating > 0 && ` (${selectedRating} stars)`}
-                  {selectedTag !== "All Reviews" && ` • "${selectedTag}"`}
                 </p>
                 {(selectedRating > 0 ||
-                  selectedTag !== "All Reviews" ||
                   searchQuery) && (
                     <button
                       onClick={() => {
                         setSelectedRating(0);
-                        setSelectedTag("All Reviews");
                         setSearchQuery("");
                       }}
                       className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
@@ -1170,16 +1214,84 @@ export default function ProductDetail() {
                             <div className="flex">
                               {renderStars(review.rating)}
                             </div>
-                            <span className="text-xs sm:text-sm text-gray-500">
+                            <span className="text-xs sm:text-sm text-gray-500 flex-1">
                               {review.date}
                             </span>
+                            {userId === review.userId && (
+                              <div className="ml-auto flex gap-2">
+                                <button
+                                  onClick={() => startEditReview(review)}
+                                  className="text-xs font-semibold text-blue-500 hover:text-white hover:bg-blue-500 border border-blue-500 rounded px-2 py-1 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteReview(review.id)}
+                                  className="text-xs font-semibold text-red-500 hover:text-white hover:bg-red-500 border border-red-500 rounded px-2 py-1 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
                           </div>
-                          <h4 className="font-medium mb-2 text-sm sm:text-base break-words">
-                            {review.title}
-                          </h4>
-                          <p className="text-gray-600 text-xs sm:text-sm mb-3 break-words">
-                            {review.content}
-                          </p>
+                          {editingReviewId === review.id ? (
+                            <form onSubmit={(e) => handleEditReviewSubmit(e, review.id)} className="space-y-4 my-3 bg-gray-50 border border-gray-100 p-4 rounded-lg">
+                              <div>
+                                <div className="flex gap-2">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                      key={star}
+                                      type="button"
+                                      onClick={() => setEditReviewData({ ...editReviewData, rating: star })}
+                                      className={`text-xl transition-transform hover:scale-110 ${star <= editReviewData.rating ? "text-yellow-400" : "text-gray-300"}`}
+                                    >
+                                      ★
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <input
+                                type="text"
+                                required
+                                placeholder="Review Title"
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-600 text-sm"
+                                value={editReviewData.title}
+                                onChange={(e) => setEditReviewData({ ...editReviewData, title: e.target.value })}
+                              />
+                              <textarea
+                                required
+                                rows={3}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-600 text-sm"
+                                value={editReviewData.content}
+                                onChange={(e) => setEditReviewData({ ...editReviewData, content: e.target.value })}
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <button
+                                  type="button"
+                                  onClick={cancelEditReview}
+                                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 font-medium bg-white border border-gray-300 rounded-lg"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="submit"
+                                  disabled={submittingEdit}
+                                  className="px-4 py-2 text-sm text-white font-medium bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
+                                >
+                                  {submittingEdit ? "Saving..." : "Save"}
+                                </button>
+                              </div>
+                            </form>
+                          ) : (
+                            <>
+                              <h4 className="font-medium mb-2 text-sm sm:text-base break-words">
+                                {review.title}
+                              </h4>
+                              <p className="text-gray-600 text-xs sm:text-sm mb-3 break-words">
+                                {review.content}
+                              </p>
+                            </>
+                          )}
 
                           {review.images.length > 0 && (
                             <div className="flex gap-2 mb-3">
@@ -1193,50 +1305,6 @@ export default function ProductDetail() {
                               ))}
                             </div>
                           )}
-
-                          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
-                            <span className="text-gray-500 w-full sm:w-auto">
-                              Did this review help you?
-                            </span>
-                            <button className="flex items-center gap-1 text-gray-600 hover:text-green-600">
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
-                                />
-                              </svg>
-                              Yes{" "}
-                              <span className="text-gray-400">
-                                ({review.helpful.yes})
-                              </span>
-                            </button>
-                            <button className="flex items-center gap-1 text-gray-600 hover:text-red-600">
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"
-                                />
-                              </svg>
-                              No{" "}
-                              <span className="text-gray-400">
-                                ({review.helpful.no})
-                              </span>
-                            </button>
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -1377,12 +1445,28 @@ export default function ProductDetail() {
                     </div>
                     <div className="flex items-baseline gap-2">
                       <span className="text-base sm:text-lg font-bold text-gray-900">
-                        ${relProduct.price.toFixed(2)}
+                        {relProduct.price.toFixed(2)} MAD
                       </span>
                     </div>
+                    {/* Color indicators */}
+                    <div className="flex items-center gap-1.5 mb-2 mt-1">
+                      {relProduct.colors?.map((colorName, idx) => (
+                        <div
+                          key={idx}
+                          className="w-3.5 h-3.5 rounded-full border border-gray-200 shadow-sm"
+                          style={{
+                            backgroundColor:
+                              colorOptions.find((c) => c.name === colorName)
+                                ?.value || "#ccc",
+                          }}
+                          title={colorName}
+                        />
+                      ))}
+                    </div>
+
                     {/* Sizes */}
                     <div className="flex gap-1 mt-2 flex-wrap">
-                      {relProduct.sizes.slice(0, 4).map((size, idx) => (
+                      {relProduct.sizes?.map((size, idx) => (
                         <span
                           key={idx}
                           className="px-1.5 py-0.5 text-[10px] border rounded border-gray-200 text-gray-500"
@@ -1390,11 +1474,6 @@ export default function ProductDetail() {
                           {size}
                         </span>
                       ))}
-                      {relProduct.sizes.length > 4 && (
-                        <span className="px-1.5 py-0.5 text-[10px] text-gray-400">
-                          +{relProduct.sizes.length - 4}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </Link>

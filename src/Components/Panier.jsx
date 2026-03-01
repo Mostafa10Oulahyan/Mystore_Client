@@ -134,10 +134,7 @@ export default function Panier() {
   const calculateSubtotal = () => {
     return cart
       .reduce((total, item) => {
-        const price =
-          typeof item.price === "string"
-            ? parseFloat(item.price.replace("$", ""))
-            : parseFloat(item.price);
+        const price = parseFloat(item.price);
         return total + price * item.quantity;
       }, 0)
       .toFixed(2);
@@ -149,7 +146,7 @@ export default function Panier() {
       <div className="min-h-screen bg-gray-50">
         {/* Top Bar */}
         <div className="bg-blue-600 text-white text-center py-2 text-sm">
-          <span>Free Shipping on Orders over $140!</span>
+          <span>Free Shipping on Orders over 140 MAD!</span>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 py-16 text-center">
@@ -540,7 +537,7 @@ export default function Panier() {
                     <div className="flex justify-between items-center text-sm mb-2">
                       <span className="text-gray-600">Subtotal</span>
                       <span className="font-medium">
-                        ${calculateSubtotal()}
+                        {calculateSubtotal()} MAD
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-sm mb-2">
@@ -551,7 +548,7 @@ export default function Panier() {
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-lg">TOTAL</span>
                         <span className="font-bold text-lg text-[#0067FF]">
-                          ${calculateSubtotal()}
+                          {calculateSubtotal()} MAD
                         </span>
                       </div>
                     </div>
@@ -703,10 +700,9 @@ export default function Panier() {
                       </button>
                     </div>
                     <p className="text-lg font-bold text-gray-900">
-                      $
                       {typeof item.price === "string"
                         ? item.price.replace("$", "")
-                        : item.price}
+                        : item.price} MAD
                     </p>
                   </div>
                 </div>
@@ -724,7 +720,7 @@ export default function Panier() {
                   <span className="text-gray-600">
                     Subtotal ({totalItems} items)
                   </span>
-                  <span className="font-medium">${calculateSubtotal()}</span>
+                  <span className="font-medium">{calculateSubtotal()} MAD</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Shipping</span>
@@ -732,14 +728,14 @@ export default function Panier() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Tax</span>
-                  <span className="font-medium">$0.00</span>
+                  <span className="font-medium">0.00 MAD</span>
                 </div>
               </div>
 
               <div className="border-t border-gray-200 mt-4 pt-4">
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total</span>
-                  <span>${calculateSubtotal()}</span>
+                  <span>{calculateSubtotal()} MAD</span>
                 </div>
               </div>
 

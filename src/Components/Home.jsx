@@ -373,8 +373,8 @@ export default function Home() {
               key={filter}
               onClick={() => setActiveFilter(filter)}
               className={`filter-btn px-4 md:px-6 py-1.5 md:py-2 rounded-full font-medium transition-all text-sm md:text-base ${activeFilter === filter
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/25"
-                  : "bg-white text-gray-700 hover:bg-gray-100 hover:shadow-md"
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/25"
+                : "bg-white text-gray-700 hover:bg-gray-100 hover:shadow-md"
                 }`}
             >
               {filter === "all"
@@ -436,8 +436,8 @@ export default function Home() {
                     toggleFavourite(product, userId);
                   }}
                   className={`absolute top-4 right-4 z-10 rounded-full p-2 shadow-md transition-all ${favourites.some((fav) => fav.id === product.id)
-                      ? "bg-red-500 text-white hover:bg-red-600"
-                      : "bg-white text-gray-700 hover:bg-gray-100"
+                    ? "bg-red-500 text-white hover:bg-red-600"
+                    : "bg-white text-gray-700 hover:bg-gray-100"
                     }`}
                 >
                   <svg
@@ -486,7 +486,7 @@ export default function Home() {
                     </span>
                   </div>
                   <p className="text-lg font-bold text-gray-900">
-                    ${product.price.toFixed(2)}
+                    {product.price.toFixed(2)} MAD
                   </p>
                 </div>
               </Link>

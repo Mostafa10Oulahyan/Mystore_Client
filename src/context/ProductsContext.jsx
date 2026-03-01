@@ -38,6 +38,7 @@ export function ProductsProvider({ children }) {
     const [categories, setCategories] = useState([]);
     const [productTypes, setProductTypes] = useState([]);
     const [colors, setColors] = useState([]);
+    const [maxPrice, setMaxPrice] = useState(500);
     const [sizes, setSizes] = useState([]);
 
     // Fetch products from Supabase
@@ -81,7 +82,9 @@ export function ProductsProvider({ children }) {
                 const colorMap = {};
                 availableVariants.forEach(v => {
                     if (v.color) {
-                        colorMap[v.color] = v.color_hex || colorMap[v.color] || COLOR_HEX_MAP[v.color] || COLOR_HEX_MAP[v.color.charAt(0).toUpperCase() + v.color.slice(1).toLowerCase()] || "#808080";
+                        // Normalize color to Title Case (e.g., "blue" -> "Blue")
+                        const normalizedColor = v.color.trim().charAt(0).toUpperCase() + v.color.trim().slice(1).toLowerCase();
+                        colorMap[normalizedColor] = v.color_hex || colorMap[normalizedColor] || COLOR_HEX_MAP[normalizedColor] || "#808080";
                     }
                 });
                 const prodColors = Object.keys(colorMap);
@@ -120,6 +123,16 @@ export function ProductsProvider({ children }) {
                 };
             });
 
+            const maxPriceVal = flattened.length > 0 ? Math.max(...flattened.map(p => p.price)) : 500;
+            const roundedMaxPrice = Math.ceil(maxPriceVal / 50) * 50;
+
+            setMaxPrice(roundedMaxPrice);
+
+            setFiltersState(prev => ({
+                ...prev,
+                priceRange: [0, roundedMaxPrice]
+            }));
+
             setAllProducts(flattened);
             setFilteredProducts(flattened);
 
@@ -132,9 +145,12 @@ export function ProductsProvider({ children }) {
             products.forEach(p => {
                 (p.product_variants || []).forEach(v => {
                     if (v.color) {
-                        const name = v.color;
-                        const hex = v.color_hex || COLOR_HEX_MAP[name] || COLOR_HEX_MAP[name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()] || "#808080";
-                        allColorsMap[name] = hex;
+                        const name = v.color.trim().charAt(0).toUpperCase() + v.color.trim().slice(1).toLowerCase();
+                        const hex = v.color_hex || COLOR_HEX_MAP[name] || "#808080";
+                        // If color already exists but doesn't have a hex, update it if this variant has one
+                        if (!allColorsMap[name] || allColorsMap[name] === "#808080") {
+                            allColorsMap[name] = hex;
+                        }
                     }
                 });
             });
@@ -181,7 +197,7 @@ export function ProductsProvider({ children }) {
             }
             // Color filter
             if (newFilters.colors.length > 0) {
-                filtered = filtered.filter((p) => newFilters.colors.includes(p.color));
+                filtered = filtered.filter((p) => p.colors.some(c => newFilters.colors.includes(c)));
             }
             // Size filter
             if (newFilters.sizes.length > 0) {
@@ -244,8 +260,11 @@ export function ProductsProvider({ children }) {
     );
 
     const clearFilters = useCallback(() => {
+        const maxPrice = allProducts.length > 0 ? Math.max(...allProducts.map(p => p.price)) : 500;
+        const roundedMaxPrice = Math.ceil(maxPrice / 50) * 50;
+
         const defaultFilters = {
-            priceRange: [0, 500],
+            priceRange: [0, roundedMaxPrice],
             ratings: [],
             categories: [],
             productTypes: [],
@@ -279,6 +298,7 @@ export function ProductsProvider({ children }) {
         productTypes,
         colors,
         sizes,
+        maxPrice,
         setFilter,
         clearFilters,
         applySort,

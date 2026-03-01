@@ -157,7 +157,7 @@ export default function TrackOrder() {
         <div className="min-h-screen bg-gray-50 pb-20">
             {/* Top Bar */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-center py-3 text-sm font-medium px-4">
-                <span>✨ Free Shipping on Orders over $140!</span>
+                <span>✨ Free Shipping on Orders over 140 MAD!</span>
             </div>
 
             <div className="max-w-5xl mx-auto px-4 py-8">
@@ -254,7 +254,7 @@ export default function TrackOrder() {
                                                 </div>
                                                 <div className="text-right hidden md:block">
                                                     <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-0.5">Total Amount</p>
-                                                    <p className="font-bold text-gray-900 text-lg">${Number(order.total).toFixed(2)}</p>
+                                                    <p className="font-bold text-gray-900 text-lg">{Number(order.total).toFixed(2)} MAD</p>
                                                 </div>
                                                 <div className={`w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center transition-transform duration-300 ${isExpanded ? "rotate-180 bg-gray-100" : ""}`}>
                                                     <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -413,7 +413,7 @@ export default function TrackOrder() {
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="font-bold text-gray-900">
-                                                                ${(item.price * item.quantity).toFixed(2)}
+                                                                {(item.price * item.quantity).toFixed(2)} MAD
                                                             </p>
                                                         </div>
                                                     </div>
@@ -515,7 +515,7 @@ export default function TrackOrder() {
                                                 <p className="text-gray-500 text-[10px] mt-0.5">{item.color} / {item.size}</p>
                                             </div>
                                             <div className="text-right font-bold text-gray-800 mt-[1px]">
-                                                {item.subtotal.toFixed(2)} DH
+                                                {item.subtotal.toFixed(2)} MAD
                                             </div>
                                         </div>
                                     ))}
@@ -525,22 +525,22 @@ export default function TrackOrder() {
                                 <div className="space-y-2 mb-4 border-b-2 border-dashed border-gray-200 pb-4">
                                     <div className="flex justify-between text-gray-500 font-semibold">
                                         <span>Subtotal</span>
-                                        <span className="text-gray-800">{previewInvoiceOrder.subtotal?.toFixed(2) || '0.00'} DH</span>
+                                        <span className="text-gray-800">{previewInvoiceOrder.subtotal?.toFixed(2) || '0.00'} MAD</span>
                                     </div>
                                     <div className="flex justify-between text-gray-500 font-semibold">
                                         <span>Shipping</span>
-                                        <span className="text-gray-800">{previewInvoiceOrder.shippingCost?.toFixed(2) || '0.00'} DH</span>
+                                        <span className="text-gray-800">{previewInvoiceOrder.shippingCost?.toFixed(2) || '0.00'} MAD</span>
                                     </div>
                                     <div className="flex justify-between text-gray-500 font-semibold mt-1">
                                         <span>Tax (0%)</span>
-                                        <span className="text-gray-800">0.00 DH</span>
+                                        <span className="text-gray-800">0.00 MAD</span>
                                     </div>
                                 </div>
 
                                 {/* Grand Total */}
                                 <div className="flex justify-between items-end mb-8 pt-1">
                                     <span className="font-bold tracking-widest text-[12px] uppercase">Total Amount</span>
-                                    <span className="text-xl font-black text-[#00b86b] tracking-tight">{previewInvoiceOrder.total?.toFixed(2) || '0.00'} DH</span>
+                                    <span className="text-xl font-black text-[#00b86b] tracking-tight">{previewInvoiceOrder.total?.toFixed(2) || '0.00'} MAD</span>
                                 </div>
 
                                 {/* QR Code & Message */}

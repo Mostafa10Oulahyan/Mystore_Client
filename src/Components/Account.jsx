@@ -75,7 +75,7 @@ export default function Account() {
     <div className="min-h-screen bg-gray-50">
       {/* Top Bar */}
       <div className="bg-blue-600 text-white text-center py-2 text-sm">
-        <span>Free Shipping on Orders over $140!</span>
+        <span>Free Shipping on Orders over 140 MAD!</span>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -194,7 +194,7 @@ export default function Account() {
                       <div>
                         <p className="text-sm text-gray-500">Total</p>
                         <p className="font-bold text-gray-900">
-                          ${order.total}
+                          {order.total} MAD
                         </p>
                       </div>
                       <div>
@@ -239,7 +239,7 @@ export default function Account() {
                           </div>
                           <div className="text-right">
                             <p className="font-bold text-blue-600">
-                              ${item.price}
+                              {item.price} MAD
                             </p>
                           </div>
                         </div>
